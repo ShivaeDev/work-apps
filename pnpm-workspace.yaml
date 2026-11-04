@@ -13,26 +13,26 @@ overrides:
 
 catalog:
   "@shivaedev/changes": 0.9.0
-  "@shivaedev/contract": 0.33.0
-  "@shivaedev/errors": 0.7.0
-  "@shivaedev/form": 0.14.0
-  "@shivaedev/github": 0.11.1
+  "@shivaedev/contract": 0.35.0
+  "@shivaedev/errors": 0.8.0
+  "@shivaedev/form": 0.15.0
+  "@shivaedev/github": 0.11.2
   "@shivaedev/http": 0.5.0
-  "@shivaedev/heavy-lock": 0.8.0
-  "@shivaedev/identity": 0.22.0
+  "@shivaedev/heavy-lock": 0.9.0
+  "@shivaedev/identity": 0.23.1
   "@shivaedev/local-postgres": 0.12.0
-  "@shivaedev/pr-watch": 0.8.1
-  "@shivaedev/quality": 0.57.1
-  "@shivaedev/react": 0.37.0
+  "@shivaedev/pr-watch": 0.8.2
+  "@shivaedev/quality": 0.59.0
+  "@shivaedev/react": 0.39.0
   "@shivaedev/reconciler": 0.1.0
   "@shivaedev/releases": 0.8.0
-  "@shivaedev/server": 0.20.2
-  "@shivaedev/service": 0.6.1
-  "@shivaedev/sql": 0.35.0
+  "@shivaedev/server": 0.23.0
+  "@shivaedev/service": 0.6.2
+  "@shivaedev/sql": 0.36.1
   "@shivaedev/test": 0.14.0
-  "@shivaedev/test-sql": 0.18.0
-  "@shivaedev/test-story": 0.36.0
-  "@shivaedev/vitest-rerun": 0.5.0
+  "@shivaedev/test-sql": 0.19.0
+  "@shivaedev/test-story": 0.37.1
+  "@shivaedev/vitest-rerun": 0.6.0
   "cn": 0.5.0
   "@zip.js/zip.js": 2.24.0
   "@base-ui/react": 1.9.0
