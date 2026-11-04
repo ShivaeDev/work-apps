@@ -31,3 +31,5 @@ PLATFORM_SQL_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/wo
 ```
 
 `pnpm board` and `pnpm fleet` run the Board and Fleet command lines from this checkout's sources.
+
+`pnpm` runs scripts from this checkout's root, so a Fleet that serves another repository starts through `script/work-fleet`, which runs the same command line in the directory you call it from.
