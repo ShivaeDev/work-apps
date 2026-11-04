@@ -1,0 +1,209 @@
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+    types:
+      - checks_requested
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  CHANGELOG_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || 'origin/main' }}
+  CI_WORKSPACE_CONCURRENCY: 4
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Pin the checked PR changelog base
+        if: github.event_name == 'pull_request'
+        run: echo "CHANGELOG_BASE_REF=$(git rev-parse HEAD^1)" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+      - run: pnpm changelog:check "$CHANGELOG_BASE_REF"
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+
+  build:
+    # Failed-job reruns must reuse this upload even when build ran in an earlier attempt.
+    outputs:
+      packages-artifact-id: ${{ steps.packages.outputs.artifact-id }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - name: Prepare and validate the package archives
+        run: pnpm test:package --prepare .ci/packages
+      - name: Package the Work Board plugin as the marketplace installs it
+        run: |
+          plugin=$(packages/work-board-plugin/script/marketplace)
+          test -f "$plugin/.claude-plugin/plugin.json"
+          test -d "$plugin/hooks"
+          test -n "$(ls -A "$plugin/src/adapters/generated")"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        id: packages
+        with:
+          name: packages-${{ github.sha }}-${{ github.run_attempt }}
+          path: .ci/packages
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30 # GitHub allows re-runs for 30 days, and a re-run of failed jobs reuses these archives
+          compression-level: 0
+
+  macos-smoke:
+    name: macOS smoke
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Test real filesystem delivery to live clients
+        run: >-
+          pnpm --filter @shivaedev/work-board test
+          src/server/liveDelivery.spec.ts
+          src/server/files
+          src/filesystemBoundaries.spec.ts
+          src/server/liveUpdates.spec.ts
+          src/server/http/home.spec.ts
+          src/server/http/server.spec.ts
+          src/server/http/symlinks.spec.ts
+          src/server/rpc/rootRemoval.spec.ts
+      - name: Repeat watcher restart and retarget delivery on macOS
+        run: |
+          for iteration in {1..20}; do
+            echo "Watcher delivery iteration $iteration/20"
+            pnpm --filter @shivaedev/work-board exec vitest run \
+              src/server/files/watchReadiness.spec.ts src/server/http/symlinks.spec.ts \
+              --testNamePattern="an unwritable root warns only once|after the reference link points at another folder, edits there reach search"
+          done
+
+  tests:
+    if: github.event_name != 'push'
+    name: tests (${{ matrix.shard }})
+    # Keep PostgreSQL test runners stable during the ubuntu-latest image migration.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # Tally reads the measured commit's first parent as its base.
+          fetch-depth: 2
+      - uses: ./.github/actions/setup
+        with:
+          postgres: "true"
+      - run: pnpm db:setup
+      - name: Test workspace shard
+        run: >-
+          pnpm test --workspace --ci-shard --shard=${{ matrix.shard }}/${{ strategy.job-total }} --coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          overwrite: true
+          name: test-timings-${{ matrix.shard }}
+          path: |
+            .ci/tests.json
+            .ci/tests.*.json
+            .ci/tests*.junit.xml
+            .ci/vite/vitest/**/results.json
+          include-hidden-files: true
+          retention-days: 14
+      - name: Record the measured commits for Tally
+        if: ${{ !cancelled() }}
+        run: mkdir -p .ci/coverage && git rev-parse HEAD HEAD^1 > .ci/coverage/measured-commits.txt
+      - name: Record the job that produced the test reports
+        if: ${{ !cancelled() }}
+        run: echo "${{ job.check_run_id }}" > .ci/job.txt
+      - name: Upload coverage for Tally
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ !cancelled() }}
+        with:
+          overwrite: true
+          name: coverage-tests-${{ matrix.shard }}
+          path: |
+            .ci/coverage/lcov.info
+            .ci/coverage/measured-commits.txt
+            .ci/flaky-tests.json
+            .ci/job.txt
+            .ci/tests.junit.xml
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  consumers:
+    needs: build
+    name: packed consumers
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Download package archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          github-token: ${{ github.token }}
+          artifact-ids: ${{ needs.build.outputs.packages-artifact-id }}
+          path: .ci/packages
+      - name: Check packed Board and Fleet against registry framework packages
+        run: pnpm test:package --archives .ci/packages
+
+  verify:
+    if: always()
+    needs: [ lint, typecheck, build, macos-smoke, tests, consumers ]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CI job to succeed
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'JS'
+          const jobs = JSON.parse(process.env.JOB_RESULTS);
+          for (const [name, job] of Object.entries(jobs)) {
+            console.log(`${name}: ${job.result}`);
+          }
+          const mainPush = process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF === 'refs/heads/main';
+          if (Object.entries(jobs).some(([name, job]) => job.result !== 'success' && !(mainPush && name === 'tests' && job.result === 'skipped'))) process.exit(1);
+          JS
