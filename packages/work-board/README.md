@@ -336,7 +336,7 @@ Reported `evidence.checked_revision` is a Git revision, distinct from the report
 
 ### API and integration
 
-Import the module that defines a name. The package has no root entry; a module's import path is its path under `src/`, which the `./*.ts` export maps to its source, declaration and runtime files. The main entry points are `server/board.ts` (`boardLayer`), `server/serve.ts` (`serveBoard`), `server/responses/agent.ts` (`agentRequest`) and `adapters/browserClient.ts` (`browserClient`); `rpc/` holds the native contracts and `rpc/rejections.ts` the declared errors. The [source directory](https://github.com/ShivaeDev/platform/tree/main/packages/work-board/src) contains file/watch, HTTP, rendering, search, views and result-review helpers. Compose `boardLayer` to retain the package's source policy and request guards.
+Import the module that defines a name. The package has no root entry; a module's import path is its path under `src/`, which the `./*.ts` export maps to its source, declaration and runtime files. The main entry points are `server/board.ts` (`boardLayer`), `server/serve.ts` (`serveBoard`), `server/responses/agent.ts` (`agentRequest`) and `adapters/browserClient.ts` (`browserClient`); `rpc/` holds the native contracts and `rpc/rejections.ts` the declared errors. The [source directory](https://github.com/ShivaeDev/work-apps/tree/main/packages/work-board/src) contains file/watch, HTTP, rendering, search, views and result-review helpers. Compose `boardLayer` to retain the package's source policy and request guards.
 
 #### Embed the workspace
 
@@ -577,7 +577,7 @@ Both commands require `work-board` on the client's PATH. `work-board mcp <dir>` 
 
 Fleet unavailability stays explicit in results. These tools read state without changing files or starting a board.
 
-In Claude Code, the [Work Board plugin](https://github.com/ShivaeDev/platform/tree/main/packages/work-board-plugin) reads the same socket without registering a server: it finds the nearest `.work` folder above the session, shows Needs you, In flight and Goals in a pane and a band above the prompt, and offers the same three tools.
+In Claude Code, the [Work Board plugin](https://github.com/ShivaeDev/work-apps/tree/main/packages/work-board-plugin) reads the same socket without registering a server: it finds the nearest `.work` folder above the session, shows Needs you, In flight and Goals in a pane and a band above the prompt, and offers the same three tools.
 
 #### CLI reference
 
@@ -618,7 +618,7 @@ The socket has owner-only access from creation: startup binds inside a private s
 pnpm add --global @shivaedev/work-board
 ```
 
-Node 24 or newer is required. For embedding, install the package into the project with the matching Effect peers declared in its [manifest](https://github.com/ShivaeDev/platform/blob/main/packages/work-board/package.json): `effect`, `@effect/platform-node` and `@effect/platform-node-shared`.
+Node 24 or newer is required. For embedding, install the package into the project with the matching Effect peers declared in its [manifest](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-board/package.json): `effect`, `@effect/platform-node` and `@effect/platform-node-shared`.
 
 Serve trusted folders: the ordinary reader retains raw HTML rather than sanitizing it. Response, handoff and result-review surfaces disable raw HTML, escape exact-source disclosure and block source form actions/frames. Writes require same-origin loopback NDJSON commands and explicit server opt-in; local author labels are not accounts.
 

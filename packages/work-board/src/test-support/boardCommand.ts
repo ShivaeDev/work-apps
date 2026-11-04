@@ -3,6 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { Effect } from "effect";
 import { attachServer } from "./servingEngine.ts";
+import { sourceNode } from "./sourceNode.ts";
 import type { BoardEngine } from "./storyEngine.ts";
 
 export const boardCommand = Effect.fn("Story.boardCommand")(function* (engine: BoardEngine, args: readonly string[], tell: (line: string) => void) {
@@ -10,7 +11,7 @@ export const boardCommand = Effect.fn("Story.boardCommand")(function* (engine: B
 	const child = spawn(
 		process.execPath,
 		[
-			"--conditions=source",
+			...sourceNode,
 			engine.cliEntry ?? fileURLToPath(new URL("../../dist/server/cli.js", import.meta.url)),
 			engine.notes.root,
 			"--port",

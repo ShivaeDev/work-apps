@@ -4,8 +4,8 @@ import * as HttpStatus from "effect/http/HttpStatus";
 import { GitHub } from "@shivaedev/github/GitHub.ts";
 import { GitHubConfig } from "@shivaedev/github/GitHubConfig.ts";
 import { GitHubToken } from "@shivaedev/github/GitHubToken.ts";
-import { fakeGitHub } from "@shivaedev/github/test-support/fakeGitHub.ts";
 import { GithubApi } from "#host/githubApi.ts";
+import { fakeGitHub } from "#test/fakeGitHub.ts";
 
 export interface ScriptedGithubResponse {
 	readonly body: unknown;

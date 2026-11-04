@@ -17,6 +17,7 @@ import { Highlighter } from "#server/render/Highlighter.ts";
 import { renderMarkdown } from "#server/render/markdown.ts";
 import { rpcCall } from "./nativeRpc.ts";
 import { renderRemaining } from "./renderRemaining.tsx";
+import { sourceNode } from "./sourceNode.ts";
 import { type BoardEngine, served } from "./storyEngine.ts";
 import { workspaceBoard } from "./workspaceBoard.ts";
 
@@ -101,7 +102,7 @@ export function workspaceReads(engine: BoardEngine) {
 		return readFileSync(join(engine.notes.root, file), "utf8");
 	}
 	function migrate() {
-		return execFileSync(process.execPath, ["--conditions=source", CLI, "migrate", engine.notes.root], { encoding: "utf8" });
+		return execFileSync(process.execPath, [...sourceNode, CLI, "migrate", engine.notes.root], { encoding: "utf8" });
 	}
 	function inbox() {
 		return onDisk((client) => client("work-board.inbox", undefined));

@@ -1,0 +1,46 @@
+import process from "node:process";
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import { Effect } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { postgresTestEnvironment } from "#lib/postgresTestEnvironment.ts";
+
+const program = Effect.gen(function* () {
+	const env = yield* postgresTestEnvironment;
+	const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+	const args = process.argv.slice(2);
+	const workspace = args.includes("--workspace");
+	const ciShard = workspace && args.includes("--ci-shard");
+	const vitest = ["--config", `${process.cwd()}/script/test/vitest.config.ts`, "--configLoader", "native"];
+	let command = workspace ? ["exec", "vitest", "run", ...vitest] : ["--recursive", "--workspace-concurrency=1", "--if-present", "test"];
+	if (ciShard) {
+		command = ["test:shard"];
+	}
+	if (workspace) {
+		const prepared = yield* spawner.exitCode(
+			ChildProcess.make("pnpm", ["--recursive", "--workspace-concurrency=1", "--if-present", "test:prepare"], {
+				stderr: "inherit",
+				stdout: "inherit",
+			}),
+		);
+		if (prepared !== 0) {
+			process.exitCode = prepared;
+			return;
+		}
+	}
+	process.exitCode = yield* spawner.exitCode(
+		ChildProcess.make(
+			"pnpm",
+			["exec", "heavy-lock", "--", "pnpm", ...command, ...args.filter((arg) => !["--workspace", "--ci-shard"].includes(arg))],
+			{
+				env,
+				extendEnv: true,
+				stderr: "inherit",
+				stdin: "inherit",
+				stdout: "inherit",
+			},
+		),
+	);
+});
+
+NodeRuntime.runMain(program.pipe(Effect.provide(NodeServices.layer)));

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+.pnpm-debug.log*
+.pnpm-store/
+.worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+.ci/
+
+packages/work-board/assets/

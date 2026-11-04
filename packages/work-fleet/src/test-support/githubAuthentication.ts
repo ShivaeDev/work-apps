@@ -1,12 +1,12 @@
 import { ConfigProvider, Context, Effect, Layer } from "effect";
 import * as HttpStatus from "effect/http/HttpStatus";
 import { GitHubConfig } from "@shivaedev/github/GitHubConfig.ts";
-import { fakeGitHub } from "@shivaedev/github/test-support/fakeGitHub.ts";
-import { telemetry } from "@shivaedev/github/test-support/telemetry.ts";
 import { storyKit } from "@shivaedev/test-story/server/storyKit.ts";
 import { GithubApi, githubApiLayer } from "#host/githubApi.ts";
+import { fakeGitHub } from "#test/fakeGitHub.ts";
 import { githubCli } from "#test/githubCli.ts";
 import { described } from "#test/refusal.ts";
+import { telemetry } from "#test/telemetry.ts";
 
 export const CLI_TOKEN = "fixture-cli-secret";
 export const ENV_TOKEN = "fixture-env-secret";

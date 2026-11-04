@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import process from "node:process";
 import { Effect } from "effect";
+import { sourceNode } from "./sourceNode.ts";
 import { STANDING_QUESTION_ID } from "./standingQuestionFixture.ts";
 import { type BoardEngine, served } from "./storyEngine.ts";
 
@@ -25,11 +26,7 @@ export function standingPolicyAnswer(engine: BoardEngine) {
 }
 
 export function runArchive(engine: BoardEngine) {
-	return execFileSync(
-		process.execPath,
-		["--conditions=source", new URL("../server/cli.ts", import.meta.url).pathname, "archive", engine.notes.root],
-		{
-			encoding: "utf8",
-		},
-	);
+	return execFileSync(process.execPath, [...sourceNode, new URL("../server/cli.ts", import.meta.url).pathname, "archive", engine.notes.root], {
+		encoding: "utf8",
+	});
 }

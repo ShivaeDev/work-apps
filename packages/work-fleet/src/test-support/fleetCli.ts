@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { sourceNode } from "./sourceNode.ts";
 
 const DATABASE_GUARD = fileURLToPath(import.meta.resolve("./clientDatabaseGuard.ts"));
 const CLI = fileURLToPath(import.meta.resolve("../cli.ts"));
@@ -21,15 +22,16 @@ export function cliProcess(
 						"bash",
 						[
 							"-c",
-							`fleet_test_node=$1\nfleet_test_guard=$2\nfleet_test_cli=$3\nwork-fleet() { exec "$fleet_test_node" --conditions=source --import "$fleet_test_guard" "$fleet_test_cli" "$@"; }\n${args}`,
+							`fleet_test_node=$1\nfleet_test_guard=$2\nfleet_test_cli=$3\nfleet_test_source=("\${@:4}")\nwork-fleet() { exec "$fleet_test_node" "\${fleet_test_source[@]}" --import "$fleet_test_guard" "$fleet_test_cli" "$@"; }\n${args}`,
 							"fleet-answer-hint",
 							process.execPath,
 							DATABASE_GUARD,
 							CLI,
+							...sourceNode,
 						],
 						{ stdio: "pipe" },
 					)
-				: spawn(process.execPath, ["--conditions=source", "--import", DATABASE_GUARD, CLI, ...args], { stdio: "pipe" });
+				: spawn(process.execPath, [...sourceNode, "--import", DATABASE_GUARD, CLI, ...args], { stdio: "pipe" });
 		let stdout = "";
 		child.stdout.on("data", (chunk: Buffer) => {
 			stdout += chunk.toString();

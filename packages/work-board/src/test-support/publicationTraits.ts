@@ -7,6 +7,7 @@ import { folder } from "./board.ts";
 import { boardStory, projectFiles, responsesEnabled } from "./boardStory.ts";
 import { heldRegisteredRead } from "./heldRegisteredRead.ts";
 import { projectPath, publicationSetup } from "./publicationFaults.ts";
+import { sourceNode } from "./sourceNode.ts";
 import { type BoardEngine, wrapFilesystem } from "./storyEngine.ts";
 
 export const DIRECTION_TASK =
@@ -140,7 +141,7 @@ export function writerKilledAt(phase: "temporary" | "published") {
 		`a writer publishing response.interrupted is killed right after it syncs its ${phase === "temporary" ? "temporary file" : "published record"}`,
 		function* (engine) {
 			const child = fork(new URL("./publicationChild.ts", import.meta.url), [engine.notes.root, phase], {
-				execArgv: ["--conditions=source"],
+				execArgv: [...sourceNode],
 				stdio: ["ignore", "pipe", "pipe", "ipc"],
 			});
 			const exited = once(child, "exit");

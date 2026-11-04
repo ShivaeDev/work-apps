@@ -12,6 +12,7 @@ import { questionnaireSource } from "./questionnaire.ts";
 import { type AgentAnswer, questionRecords, registeredQuestion, type ServiceStep } from "./questionRecordState.ts";
 import { recordedEdgeResponse } from "./responseEdges.ts";
 import { refusal, settledEffect } from "./responseOutcome.ts";
+import { sourceNode } from "./sourceNode.ts";
 import { type BoardEngine, served } from "./storyEngine.ts";
 
 const execute = promisify(execFile);
@@ -155,7 +156,7 @@ export function agentWaitVerbs(engine: BoardEngine, tell: (line: string) => void
 		cliWaits: () => {
 			const question = registeredQuestion(engine);
 			tell(`the agent runs the bundled work-board wait ${question.id}`);
-			const args = ["--conditions=source", "src/server/cli.ts", "wait", question.id, "--port", String(served(engine).board.port)];
+			const args = [...sourceNode, "src/server/cli.ts", "wait", question.id, "--port", String(served(engine).board.port)];
 			return Effect.promise(() =>
 				execute(process.execPath, args, { cwd: new URL("../../", import.meta.url), timeout: 10_000 }).then(
 					({ stdout, stderr }) => ({ exitCode: 0, printed: stdout === "" ? "nothing" : replyOf(JSON.parse(stdout)), told: stderr.trim() }),

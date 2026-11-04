@@ -4,6 +4,7 @@ import process from "node:process";
 import { createInterface } from "node:readline";
 import { Effect } from "effect";
 import type { ResponseKind } from "#browser/responses/schema.ts";
+import { sourceNode } from "./sourceNode.ts";
 import { type BoardEngine, served } from "./storyEngine.ts";
 
 const openFeed = Effect.fn("Story.openFeed")(function* (root: string, since?: string) {
@@ -11,7 +12,7 @@ const openFeed = Effect.fn("Story.openFeed")(function* (root: string, since?: st
 		Effect.sync(() =>
 			spawn(
 				process.execPath,
-				["--conditions=source", "src/server/cli.ts", "responses", "--follow", root, ...(since === undefined ? [] : ["--since", since])],
+				[...sourceNode, "src/server/cli.ts", "responses", "--follow", root, ...(since === undefined ? [] : ["--since", since])],
 				{ cwd: new URL("../../", import.meta.url), stdio: "pipe" },
 			),
 		),

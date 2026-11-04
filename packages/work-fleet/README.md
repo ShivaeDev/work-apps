@@ -47,7 +47,7 @@ Each item moves through a small set of stages, shared with Board:
 | Authored Board status | `draft`, `ready`, `done`, `deferred`, `dropped`                 |
 | Fleet stage           | `queued`, `working`, `reviewing`, `waiting`, `done`, `released` |
 
-The [Board vocabulary](https://github.com/ShivaeDev/platform/blob/main/packages/work-board/README.md#work-vocabulary) defines each authored state's meaning, approval, ownership, deliverables and question fields. Fleet keeps resumable execution steps in `record.step` beneath the shared `record.stage`. Stored records, status files, CLI and MCP projections use the same stages. Review, required-check validation and delivery observation all show as `reviewing`.
+The [Board vocabulary](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-board/README.md#work-vocabulary) defines each authored state's meaning, approval, ownership, deliverables and question fields. Fleet keeps resumable execution steps in `record.step` beneath the shared `record.stage`. Stored records, status files, CLI and MCP projections use the same stages. Review, required-check validation and delivery observation all show as `reviewing`.
 
 A finished worker turn is not finished work. A terminal worker turn is execution evidence; accepted completion also needs result adoption, review when enabled, required checks and an observed merge of the validated head, or a validated no-change result. A provider receipt, a terminal turn, a passing review and an accepted delivery are separate facts, and Fleet records each one separately.
 
@@ -139,7 +139,7 @@ The host defaults to `concurrency: 100`, `backlog: 100`, `namespace: "work_fleet
 
 The Codex quota policy uses ordinary-usage eligibility and caches observations for a minute; `quota: "unlimited"` admits without that provider limit. An unknown quota response fails rather than granting capacity.
 
-`stallMinutes` (default 30) sets how long a running turn may stay silent before Fleet asks the orchestrator about it. `readRetryMs` (default `30000`) sets the first delay when a provider or integration read must back off. `areaMergeWaitMs` (default 30 minutes) sets how long a ready PR keeps its areas; see [Claim areas](#claim-areas). The [recovery guide](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md) describes the stall and retry behavior in full.
+`stallMinutes` (default 30) sets how long a running turn may stay silent before Fleet asks the orchestrator about it. `readRetryMs` (default `30000`) sets the first delay when a provider or integration read must back off. `areaMergeWaitMs` (default 30 minutes) sets how long a ready PR keeps its areas; see [Claim areas](#claim-areas). The [recovery guide](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md) describes the stall and retry behavior in full.
 
 #### Pace new work by open PRs
 
@@ -166,7 +166,7 @@ The daemon's HTTP clients share one PostgreSQL admission pool, bounded by `datab
 
 Fleet migrates its tables at startup in the namespace ledger before acquiring application services. The migrations convert records written by earlier Fleet releases into the current typed tables, including stages of current and archived cycles, preserving nested values, record versions and admission order.
 
-Board and Fleet refuse a Board written in an earlier Board vocabulary and name the affected file and field; run `work-board migrate <board dir>` once, as the [Board vocabulary](https://github.com/ShivaeDev/platform/blob/main/packages/work-board/README.md#work-vocabulary) describes. Migration preserves published decision revisions, registered questions, recorded answers and request receipts across the rewrite. Answered and settled asks retain their state; an edit to the question itself still invalidates its reviewed context.
+Board and Fleet refuse a Board written in an earlier Board vocabulary and name the affected file and field; run `work-board migrate <board dir>` once, as the [Board vocabulary](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-board/README.md#work-vocabulary) describes. Migration preserves published decision revisions, registered questions, recorded answers and request receipts across the rewrite. Answered and settled asks retain their state; an edit to the question itself still invalidates its reviewed context.
 
 #### Give Fleet GitHub access
 
@@ -254,7 +254,7 @@ The launch fields are strings. Omitted fields inherit the host settings; without
 
 #### What the worker reads
 
-Cloud worker prompts open with the repository README's first prose paragraph, then the titles and bodies of goals reached through `implements` relationships, then the task's title and body, areas and acceptance criteria as readable lists. They omit Board bookkeeping frontmatter. Repository worker guidance and Fleet's startup, evidence, question and final-report protocol follow that context; the [worker protocol](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/worker-protocol.md) describes the markers workers return.
+Cloud worker prompts open with the repository README's first prose paragraph, then the titles and bodies of goals reached through `implements` relationships, then the task's title and body, areas and acceptance criteria as readable lists. They omit Board bookkeeping frontmatter. Repository worker guidance and Fleet's startup, evidence, question and final-report protocol follow that context; the [worker protocol](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/worker-protocol.md) describes the markers workers return.
 
 Cloud workers cannot read local-only Board data. Cloud hosts compute the Board directory's repository-relative path only when that directory is inside the repository and git-ignored. Before launching, Fleet checks each criterion's text for that path. A match publishes an orchestrator decision naming the criteria and explaining that Cloud workers cannot read local-only Board data, without starting a session. Edit the criteria to use data available to the worker, then dispatch again. Local workers, Board directories outside the repository, directories that are not ignored, and paths mentioned only in the body do not trigger this guard.
 
@@ -262,7 +262,7 @@ Cloud workers cannot read local-only Board data. Cloud hosts compute the Board d
 
 Fleet identifies work by its authored brief: the Markdown title and body, criteria, Board kind, deliverable kind and authored relationships. Bookkeeping fields such as `status`, `next_action` and `owner` do not change that revision, and neither does editing a linked goal, plan, report or decision, or an unrelated item. Editing bookkeeping on working or reviewing items preserves the attempts; editing it on work with an open decision preserves the question and its recorded answers.
 
-Criteria or body edits refresh eligible queued and working items in place. When queued or working items have no open decision, Fleet approves an edited brief on the next pass if it still has `fleet: approved`, its owner is omitted or `codex`, and its status is not `done`, `deferred` or `dropped`. The worker keeps its session, turn and PR without a Board context changed decision. While the worker or repair turn runs, Fleet steers it with a summary of the changes followed by the full new brief; [brief steering](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md#brief-steering) describes its delivery guarantees.
+Criteria or body edits refresh eligible queued and working items in place. When queued or working items have no open decision, Fleet approves an edited brief on the next pass if it still has `fleet: approved`, its owner is omitted or `codex`, and its status is not `done`, `deferred` or `dropped`. The worker keeps its session, turn and PR without a Board context changed decision. While the worker or repair turn runs, Fleet steers it with a summary of the changes followed by the full new brief; [brief steering](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md#brief-steering) describes its delivery guarantees.
 
 A changed brief that fails these conditions still stops for a human, and work waiting on a human decision stops with Board context changed. When that happens before the first launch, the decision card says the edit, such as an owner other than Codex, is one Fleet cannot accept by itself, and asks to undo the edit and try again or hand the task back; retry starts the work once the task matches what Fleet prepared.
 
@@ -280,7 +280,7 @@ Before launching queued work, Fleet rereads its Markdown source for the current 
 
 #### Claim areas
 
-Use `areas` to name existing repository folders a task changes: a package folder under `packages/` or `examples/`, optionally followed by a folder inside its `src/`, or a top-level folder such as `script/release` or `.github`. Name the one to three home packages for the task’s one goal; use a subfolder only when the task stays inside one stable folder of a busy package. See the [Board’s task sizing guide](https://github.com/ShivaeDev/platform/blob/main/packages/work-board/docs/delivery/source-examples.md#size-a-task-and-pick-its-scheduling-areas). Board reports invalid areas with a nearest existing path suggestion, and Fleet refuses to dispatch them with the same diagnostic.
+Use `areas` to name existing repository folders a task changes: a package folder under `packages/` or `examples/`, optionally followed by a folder inside its `src/`, or a top-level folder such as `script/release` or `.github`. Name the one to three home packages for the task’s one goal; use a subfolder only when the task stays inside one stable folder of a busy package. See the [Board’s task sizing guide](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-board/docs/delivery/source-examples.md#size-a-task-and-pick-its-scheduling-areas). Board reports invalid areas with a nearest existing path suggestion, and Fleet refuses to dispatch them with the same diagnostic.
 
 Two areas overlap when they are equal or one is a `/`-prefix of the other: `work-fleet` and `work-fleet/host` block each other, while `work-fleet/host` and `work-fleet/scheduling` stay independent. The area `*` overlaps every area. Fleet serializes overlapping claims; disjoint areas and tasks without areas can run concurrently within capacity and quota limits.
 
@@ -387,7 +387,7 @@ Report workers leave repository sources unchanged, research the dispatched main 
 
 Successful publication records the report in the current Board read pass and completes the Fleet attempt without PR adoption, independent review, checks or delivery. `wait` and the status views expose the same terminal states and result path. Scheduler passes do not repeat publication.
 
-Empty output, a report over Board's 256 KiB context limit, a report on the wrong revision, or a report worker that published to GitHub creates an orchestrator decision instead of a result. A retry after a publication failure republishes the existing completed attempt; a retry after empty output prepares another worker attempt. Oversized output offers only release because retry cannot shorten a completed report; prepare a worker to produce a shorter report after release. The [worker protocol](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/worker-protocol.md#research-reports) covers revisions, attachments, limits and publication.
+Empty output, a report over Board's 256 KiB context limit, a report on the wrong revision, or a report worker that published to GitHub creates an orchestrator decision instead of a result. A retry after a publication failure republishes the existing completed attempt; a retry after empty output prepares another worker attempt. Oversized output offers only release because retry cannot shorten a completed report; prepare a worker to produce a shorter report after release. The [worker protocol](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/worker-protocol.md#research-reports) covers revisions, attachments, limits and publication.
 
 ### 3. Every day: follow and direct the work
 
@@ -418,7 +418,7 @@ Queued dependency waits stay in automation even when their stored owner is orche
 
 #### After launch: adoption
 
-With `"result": "github"`, Fleet adopts a completed worker report through the GitHub REST API. Adoption records the GitHub PR number, exact head and all paginated changed paths, including both paths of a rename. The PR must be open or merged in the host repository and target its configured branch; a different reported head or base/path movement during observation fails with a typed platform `BadRequest` or `Conflict`. A PR closed without merging waits on the orchestrator. Malformed or stale reports get one correction turn on the worker thread first; the [worker protocol](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/worker-protocol.md) describes the report format and corrections. A worker that reports no change passes through the configured review policy. The stock host verifies that its exact reported commit is on main, including an ancestor when main has advanced, then closes the task and marks its brief done without a PR. Tasks stopped by the former missing no-change validator resume validation on reconciliation when their existing review is satisfied; their old question closes. An orchestrator can also retry validation with that review.
+With `"result": "github"`, Fleet adopts a completed worker report through the GitHub REST API. Adoption records the GitHub PR number, exact head and all paginated changed paths, including both paths of a rename. The PR must be open or merged in the host repository and target its configured branch; a different reported head or base/path movement during observation fails with a typed platform `BadRequest` or `Conflict`. A PR closed without merging waits on the orchestrator. Malformed or stale reports get one correction turn on the worker thread first; the [worker protocol](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/worker-protocol.md) describes the report format and corrections. A worker that reports no change passes through the configured review policy. The stock host verifies that its exact reported commit is on main, including an ancestor when main has advanced, then closes the task and marks its brief done without a PR. Tasks stopped by the former missing no-change validator resume validation on reconciliation when their existing review is satisfied; their old question closes. An orchestrator can also retry validation with that review.
 
 A PR merged before adoption or during review still requires review when enabled and checks for its reported head before Fleet accepts the observed merge as delivery. Retrying a failed adoption resumes the completed worker receipt; retrying after review reuses that review session.
 
@@ -436,13 +436,13 @@ If a check still fails after three consecutive completed check repairs, Fleet pu
 
 The GitHub host queues eligible Fleet PRs with an approved review and passing checks for the exact head. Foreign and release PRs, PRs without an approved review, and custom hosts without a queue integration wait on the orchestrator as ready to merge. Reconciliation keeps observing the adopted PR through GitHub's REST API with the host's configured GitHub credentials, accepts only a merge of the validated head and records the PR head and merge commit. A PR closed without merging waits on the orchestrator with that fact. A temporary observation failure preserves the current Board decision and ownership until GitHub evidence is available again.
 
-A moved PR head after approval goes back through the currently configured review path and fresh checks automatically; [moved heads](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md#moved-heads-and-failed-follow-ups) describes how.
+A moved PR head after approval goes back through the currently configured review path and fresh checks automatically; [moved heads](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md#moved-heads-and-failed-follow-ups) describes how.
 
 Main advancing alone does not invalidate adoption, review or validation of an unchanged PR head: an approved, green, conflict-free head behind main stays ready through reconciliation and restart, then queues that exact reviewed head without repeating review or validation. GitHub's explicit `CONFLICTING` mergeability observation sends an approved PR to its worker to merge main once per observed main revision; durable revision receipts prevent repeated automatic repair across restart. A conflict that remains after that repair waits on the orchestrator.
 
 #### When a turn stalls or goes missing
 
-A turn that stays silent for `stallMinutes` makes Fleet ask the orchestrator to keep waiting, retry in a fresh session or abandon it; Fleet never steers or interrupts a silent turn on its own. Lost turns, provider capacity rejections and unreadable state retain ownership and recover as the [recovery guide](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md) describes.
+A turn that stays silent for `stallMinutes` makes Fleet ask the orchestrator to keep waiting, retry in a fresh session or abandon it; Fleet never steers or interrupts a silent turn on its own. Lost turns, provider capacity rejections and unreadable state retain ownership and recover as the [recovery guide](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md) describes.
 
 #### Answer questions and decisions
 
@@ -463,7 +463,7 @@ A ready-to-merge decision answered with `retry` and a nonempty overall response 
 
 Nonempty text sent during execution or repair is stored for the next worker turn, survives daemon restart and uses the same recorded acknowledgement before queueing in request order; release requests still require terminal waiting work. Items waiting on nothing return a typed error naming their stage.
 
-The answer applies to the exact decision it was recorded against; [answers and continuations](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md#answers-and-continuations) describes how a decision that changes during the command is handled. An earlier clarification or deferral receipt leaves the decision open and does not consume a later answer or release; clarification and deferral keep a worker question open. `status` and `watch` keep the answer's application on automation until it is applied. Application failures appear as `Answer failed` with their cause in status, log the work ID and cause, and can be retried with another answer.
+The answer applies to the exact decision it was recorded against; [answers and continuations](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md#answers-and-continuations) describes how a decision that changes during the command is handled. An earlier clarification or deferral receipt leaves the decision open and does not consume a later answer or release; clarification and deferral keep a worker question open. `status` and `watch` keep the answer's application on automation until it is applied. Application failures appear as `Answer failed` with their cause in status, log the work ID and cause, and can be retried with another answer.
 
 Responses from the same author use the newest recorded response, ordered by recorded time and then response ID; different authors still need explicit supersession to resolve competing responses. Answer text supplies task input and does not grant delivery authority.
 
@@ -481,7 +481,7 @@ work-fleet release sample-one sample-two --board ./notes
 
 Use `release` when work is waiting and its execution has ended. The command records an explicit release response for each current waiting decision, including worker questions, then uses the same resolution path as a release answer. For running work, it points to `work-fleet stop <id>`. It supersedes an existing unambiguous response, refuses changed decision sources or competing responses, and can be repeated to recover a pending acknowledgement.
 
-A guided release answer frees Fleet ownership even when the task content or location changed, or the task is now done, deferred, dropped or unapproved. Fleet still checks the exact decision source, question and response, and it never releases work whose execution it cannot confirm has ended; [release with uncertain execution](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md#release-with-uncertain-execution) describes those checks. A retry answer resumes the prepared brief only while its authored identity still matches.
+A guided release answer frees Fleet ownership even when the task content or location changed, or the task is now done, deferred, dropped or unapproved. Fleet still checks the exact decision source, question and response, and it never releases work whose execution it cannot confirm has ended; [release with uncertain execution](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md#release-with-uncertain-execution) describes those checks. A retry answer resumes the prepared brief only while its authored identity still matches.
 
 After release without an adopted PR, the next admission pass prepares a fresh cycle if the task still has `fleet: approved` and is not closed. The fresh cycle keeps the same item ID, preserves the released cycle and known PR reservations, and starts a new worker session. A held, unapproved or closed task stays released.
 
@@ -574,7 +574,7 @@ Text events start with the event kind followed by named JSON values, so multilin
 }
 ```
 
-`watch <ids...>` without event flags prints text outcomes once and exits when every selected item has reported. Add `--follow` for the continuous actionable event stream. The [watch guide](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/watching.md) covers heartbeats, reconnection, deduplication, Board answer and PR events.
+`watch <ids...>` without event flags prints text outcomes once and exits when every selected item has reported. Add `--follow` for the continuous actionable event stream. The [watch guide](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/watching.md) covers heartbeats, reconnection, deduplication, Board answer and PR events.
 
 ### Examples
 
@@ -743,7 +743,7 @@ Fleet excludes files with invalid metadata or unreadable sources from admission,
 
 #### Decision codes
 
-Import the Schema literal union `DecisionCode` from `@shivaedev/work-fleet/DecisionCode.ts`. Platform integration errors carry a code through `withFailureContext(error, { code })` from `@shivaedev/work-fleet/engine/failureContext.ts`; uncoded errors receive a code from their Platform error tag. Session and Board failures retain their optional code fields. Release-only actions, report-correction retries, conflict repair and merge-ready reconciliation use codes. Conflict decisions use `pr-conflicting`. Stored decisions may lack a code; Fleet assigns codes when it publishes decisions. The [recovery guide](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/docs/recovery.md#provider-capacity) lists the session codes that drive retries.
+Import the Schema literal union `DecisionCode` from `@shivaedev/work-fleet/DecisionCode.ts`. Platform integration errors carry a code through `withFailureContext(error, { code })` from `@shivaedev/work-fleet/engine/failureContext.ts`; uncoded errors receive a code from their Platform error tag. Session and Board failures retain their optional code fields. Release-only actions, report-correction retries, conflict repair and merge-ready reconciliation use codes. Conflict decisions use `pr-conflicting`. Stored decisions may lack a code; Fleet assigns codes when it publishes decisions. The [recovery guide](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/docs/recovery.md#provider-capacity) lists the session codes that drive retries.
 
 #### Errors
 
@@ -757,7 +757,7 @@ Install Fleet in the repository that holds the Board folder, with its Effect pee
 pnpm add --save-dev @shivaedev/work-fleet effect @effect/platform-node @effect/platform-node-shared
 ```
 
-The package provides the `work-fleet` command and brings Work Board with it. Node 24 or newer is required. The peer ranges in the [manifest](https://github.com/ShivaeDev/platform/blob/main/packages/work-fleet/package.json) decide which Effect versions resolve. Modules are imported by path, such as `@shivaedev/work-fleet/fleet.ts`.
+The package provides the `work-fleet` command and brings Work Board with it. Node 24 or newer is required. The peer ranges in the [manifest](https://github.com/ShivaeDev/work-apps/blob/main/packages/work-fleet/package.json) decide which Effect versions resolve. Modules are imported by path, such as `@shivaedev/work-fleet/fleet.ts`.
 
 A running host needs:
 - PostgreSQL, reachable at `database.url`.

@@ -3,6 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { Cause, Effect } from "effect";
 import { changeSignal } from "#test/changeSignal.ts";
+import { sourceNode } from "./sourceNode.ts";
 
 function diagnose(effect: Effect.Effect<void, unknown>, message: () => string) {
 	return effect.pipe(
@@ -16,7 +17,7 @@ export function hostProcess(configFile: string, pausePublication = false, report
 			const changed = changeSignal();
 			const child = spawn(
 				process.execPath,
-				["--conditions=source", fileURLToPath(entry), configFile, ...(pausePublication ? ["pause-publication"] : []), ...(report ? ["report"] : [])],
+				[...sourceNode, fileURLToPath(entry), configFile, ...(pausePublication ? ["pause-publication"] : []), ...(report ? ["report"] : [])],
 				{
 					stdio: ["ignore", "pipe", "pipe", "ipc"],
 				},

@@ -1,0 +1,49 @@
+{
+	"name": "@shivaedev/work-apps-workspace",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"imports": {
+		"#*": "./script/*"
+	},
+	"scripts": {
+		"board": "node --conditions=source --import \"$PWD/script/adapters/publishedPackages.ts\" packages/work-board/src/server/cli.ts",
+		"build": "heavy-lock -- pnpm --recursive --workspace-concurrency=1 --if-present build",
+		"changelog:check": "releases check",
+		"db:setup": "node --env-file-if-exists=.env.local script/setup-database.ts",
+		"fleet": "node --conditions=source --import \"$PWD/script/adapters/publishedPackages.ts\" packages/work-fleet/src/cli.ts",
+		"format": "quality fix",
+		"heavy": "heavy-lock --",
+		"hooks": "quality hooks install",
+		"lint": "quality lint",
+		"ready": "pnpm lint && pnpm changelog:check && pnpm typecheck",
+		"releases": "releases",
+		"setup": "pnpm install --frozen-lockfile && pnpm --filter @shivaedev/work-board-plugin build:client && pnpm hooks && quality baseline install-driver && pnpm db:setup",
+		"test": "node --env-file-if-exists=.env.local script/test.ts",
+		"test:package": "heavy-lock -- node script/package-check.ts",
+		"test:shard": "vitest-rerun --output-dir .ci --reruns 1 -- --config script/test/vitest.config.ts --configLoader native",
+		"typecheck": "heavy-lock -- sh -c 'pnpm typecheck:root && pnpm --recursive --workspace-concurrency=1 --if-present typecheck'",
+		"typecheck:root": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@effect/platform-node": "catalog:",
+		"@effect/platform-node-shared": "catalog:",
+		"@shivaedev/heavy-lock": "catalog:",
+		"@shivaedev/local-postgres": "catalog:",
+		"@shivaedev/quality": "catalog:",
+		"@shivaedev/releases": "catalog:",
+		"@shivaedev/test-story": "catalog:",
+		"@shivaedev/vitest-rerun": "catalog:",
+		"@types/node": "catalog:",
+		"@typescript/native": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"effect": "catalog:",
+		"typescript": "catalog:compiler-api",
+		"vitest": "catalog:"
+	},
+	"packageManager": "pnpm@12.16.0+sha512.e9ccc91a0b8d52da297c16841f9ee05f3ddd631bd757ef26a211687d4a38de653c614453649294438c58be74c2ba62d53e633a4e153708c012296d0f3ee27b36",
+	"engines": {
+		"node": ">=24"
+	}
+}

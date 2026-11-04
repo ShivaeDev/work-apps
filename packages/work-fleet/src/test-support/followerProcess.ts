@@ -4,6 +4,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { Config, Effect } from "effect";
 import { processText } from "#test/processText.ts";
+import { sourceNode } from "./sourceNode.ts";
 
 interface FollowRun {
 	readonly code: number | null;
@@ -52,9 +53,7 @@ export function followerProcess(
 			const child = spawn(
 				options.pnpm ? "pnpm" : process.execPath,
 				[
-					...(options.pnpm
-						? ["-s", "fleet"]
-						: ["--conditions=source", "--import", fileURLToPath(new URL("./clientDatabaseGuard.ts", import.meta.url)), cli]),
+					...(options.pnpm ? ["-s", "fleet"] : [...sourceNode, "--import", fileURLToPath(new URL("./clientDatabaseGuard.ts", import.meta.url)), cli]),
 					command,
 					...ids,
 					...(options.cwd === undefined ? ["--board", dirname(configFile)] : []),

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import process from "node:process";
 import { promisify } from "node:util";
 import { Effect } from "effect";
+import { sourceNode } from "./sourceNode.ts";
 import { sourceProblemsScreen } from "./sourceProblemsScreen.tsx";
 import { type BoardEngine, served } from "./storyEngine.ts";
 
@@ -12,7 +13,7 @@ export function archiveVerbs(engine: BoardEngine, tell: (line: string) => void) 
 		archive: () => {
 			tell("run work-board archive on the workspace");
 			return Effect.sync(() =>
-				execFileSync(process.execPath, ["--conditions=source", new URL("../server/cli.ts", import.meta.url).pathname, "archive", engine.notes.root], {
+				execFileSync(process.execPath, [...sourceNode, new URL("../server/cli.ts", import.meta.url).pathname, "archive", engine.notes.root], {
 					encoding: "utf8",
 				}),
 			);
@@ -23,7 +24,7 @@ export function archiveVerbs(engine: BoardEngine, tell: (line: string) => void) 
 				await Promise.all(
 					[1, 2].map(() =>
 						promisify(execFile)(process.execPath, [
-							"--conditions=source",
+							...sourceNode,
 							new URL("../server/cli.ts", import.meta.url).pathname,
 							"archive",
 							engine.notes.root,

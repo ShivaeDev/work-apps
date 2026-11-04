@@ -1,5 +1,5 @@
 import { fence } from "@shivaedev/quality/imports/fence.ts";
-import { anyOf, anything, external, files, folders, modules, packages } from "@shivaedev/quality/imports/fences/selectors.ts";
+import { anything, external, folders, modules } from "@shivaedev/quality/imports/fences/selectors.ts";
 
 const boardCode = folders("packages/work-board/src").except(folders("packages/work-board/src/server"));
 const markdownCode = folders("packages/work-board/src/client/document", "packages/work-board/src/render");
@@ -16,10 +16,6 @@ const markdownDependencies = modules(
 	"mdast",
 	"mdast-util-directive",
 );
-const browserDependencies = anyOf(
-	files("packages/identity/src/identity.ts", "packages/identity/src/middleware.ts", "packages/identity/src/permission.ts"),
-	files("packages/access/src/permission.ts", "packages/identity/src/PermissionSession.ts"),
-);
 
 export default [
 	fence("board-client-stays-browser-safe")
@@ -27,11 +23,9 @@ export default [
 		.from(folders("packages/work-board/src/client").except(markdownCode))
 		.mayNotReach(
 			anything.except(
-				files("packages/changes/src/keys.ts"),
 				boardCode,
-				browserDependencies,
 				markdownDependencies,
-				packages("contract", "errors", "form", "react", "types"),
+				modules("@shivaedev/changes", "@shivaedev/contract", "@shivaedev/errors", "@shivaedev/form", "@shivaedev/identity", "@shivaedev/react"),
 				modules(
 					"effect",
 					"react",
@@ -50,7 +44,7 @@ export default [
 		)
 		.demonstratedBy({
 			illegal: ["packages/work-board/src/client/formStatus.ts", external("node:fs")],
-			legal: ["packages/work-board/src/client/formStatus.ts", "packages/form/src/form.ts"],
+			legal: ["packages/work-board/src/client/formStatus.ts", external("@shivaedev/form/form.ts")],
 		}),
 	fence("document-rendering-stays-browser-safe")
 		.because(
@@ -59,11 +53,9 @@ export default [
 		.from(markdownCode)
 		.mayNotReach(
 			anything.except(
-				files("packages/changes/src/keys.ts"),
 				boardCode,
-				browserDependencies,
 				markdownDependencies,
-				packages("contract", "errors", "form", "types"),
+				modules("@shivaedev/changes", "@shivaedev/contract", "@shivaedev/errors", "@shivaedev/form"),
 				modules("effect"),
 				modules("react"),
 			),

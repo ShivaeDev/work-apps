@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import { act } from "react";
-import { untilAtom } from "@shivaedev/react/test-support/untilAtom.ts";
 import { session } from "#client/session.ts";
 import type { ScreenEngine } from "#test/screenEngine.ts";
+import { untilAtom } from "#test/untilAtom.ts";
 
 export function sessionTransportActions(engine: ScreenEngine, tell: (line: string) => void) {
 	function connected() {

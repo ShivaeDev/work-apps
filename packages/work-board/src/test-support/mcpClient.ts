@@ -3,6 +3,7 @@ import process from "node:process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { Effect, Schema } from "effect";
+import { sourceNode } from "./sourceNode.ts";
 
 const Response = Schema.Struct({
 	error: Schema.optional(Schema.Unknown),
@@ -17,7 +18,7 @@ const Result = Schema.Struct({
 export const mcpClient = Effect.fn("Test.mcpClient")(function* (directory: string) {
 	const child = yield* Effect.acquireRelease(
 		Effect.sync(() =>
-			spawn(process.execPath, ["--conditions=source", fileURLToPath(new URL("../server/cli.ts", import.meta.url)), "mcp", directory], {
+			spawn(process.execPath, [...sourceNode, fileURLToPath(new URL("../server/cli.ts", import.meta.url)), "mcp", directory], {
 				stdio: ["pipe", "pipe", "pipe"],
 			}),
 		),

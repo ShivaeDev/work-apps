@@ -5,6 +5,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { Effect } from "effect";
 import { type Folder, folder } from "#test/board.ts";
+import { sourceNode } from "./sourceNode.ts";
 
 interface Message {
 	readonly error?: string;
@@ -37,7 +38,7 @@ export const socketStartup = Effect.fn("Test.socketStartup")(function* (
 ) {
 	const child = yield* Effect.acquireRelease(
 		Effect.sync(() =>
-			spawn(process.execPath, ["--conditions=source", fileURLToPath(entry), root, phase], {
+			spawn(process.execPath, [...sourceNode, fileURLToPath(entry), root, phase], {
 				stdio: ["ignore", "ignore", "pipe", "ipc"],
 			}),
 		),

@@ -1,0 +1,10 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"extends": ["@shivaedev/quality/biome/preset.json"],
+	"plugins": [
+		{
+			"includes": ["**/*.ts", "**/*.tsx", "!**/*.d.ts"],
+			"path": "./script/quality/imports.grit"
+		}
+	]
+}
