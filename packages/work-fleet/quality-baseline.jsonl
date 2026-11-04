@@ -194,3 +194,4 @@
 {"path":"packages/work-fleet/src/providers/codexLogin.ts","rule":"effect/adapter-imports","count":2}
 {"path":"packages/work-fleet/src/scheduling/sweeps.ts","rule":"effect/adapter-imports","count":1}
 {"path":"packages/work-fleet/src/storage/recordChildren.ts","rule":"effect/adapter-imports","count":1}
+{"path":"packages/work-fleet/package.json","rule":"code/unused","count":1}
