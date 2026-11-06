@@ -4,8 +4,7 @@ import { revisionOf } from "#server/responses/records.ts";
 import type { SettledRecord } from "./settledCatalogue.ts";
 import { settledRecords } from "./settledRecords.ts";
 
-export function settledPlan(documents: readonly MetadataDocument[], catalogue: readonly SettledRecord[]) {
-	const existing = new Map(catalogue.map((record) => [record.id, record]));
+export function settledPlan(documents: readonly MetadataDocument[], existing: ReadonlyMap<string, SettledRecord>) {
 	const candidates = new Map(settledRecords(documents).map((candidate) => [candidate.id, candidate]));
 	return documents.flatMap((document) => {
 		const id = document.parsed.fields.id ?? "";

@@ -6,11 +6,10 @@ import { publishAfterBoardPass } from "#board/readPass.ts";
 import { writeHealth } from "#board/writeHealth.ts";
 import { writeStatus } from "#board/writeStatus.ts";
 import { Health, HealthPublication, HealthSnapshot } from "#engine/health.ts";
-import { views } from "#engine/views.ts";
 import { Fleet } from "#fleet.ts";
 import { GithubApi } from "#host/githubApi.ts";
 import type { GithubObservation } from "#host/githubRateLimit.ts";
-import { executing, type FleetRecord } from "#model.ts";
+import { publishedRecords, recordCounter } from "#host/publishedRecords.ts";
 
 const { SourceFailure } = diagnosticsApi;
 
@@ -33,17 +32,22 @@ export function statusLayer(
 			const realRoot = yield* fs.realPath(root);
 			const lock = yield* Semaphore.make(1);
 			const snapshot = yield* Ref.make<FleetHealth | null>(null);
+			const status = publishedRecords();
+			const counts = recordCounter();
 			const publication = Effect.fn("FleetStatus.publication")(
 				function* (read: typeof fleet.list) {
 					const records = (yield* read()).map(({ value }) => value);
-					yield* writeStatus(root, realRoot, records).pipe(
-						Effect.catch((error) => Console.error(`work-fleet: status publication failed: ${error.message}`)),
-					);
+					if (status.changed(records)) {
+						yield* writeStatus(root, realRoot, records).pipe(
+							Effect.andThen(status.published(records)),
+							Effect.catch((error) => Console.error(`work-fleet: status publication failed: ${error.message}`)),
+						);
+					}
 					if (healthConfig === undefined) {
 						return;
 					}
 					const state = health._tag === "Some" ? yield* Ref.get(health.value) : { lastCapacityRejection: null, lastSchedulerPass: null };
-					const nextHealth = fleetHealth(records, yield* github, { ...(yield* healthConfig), ...state }, yield* Clock.currentTimeMillis);
+					const nextHealth = fleetHealth(counts(records), yield* github, { ...(yield* healthConfig), ...state }, yield* Clock.currentTimeMillis);
 					yield* Ref.set(snapshot, nextHealth);
 					yield* writeHealth(root, realRoot, nextHealth);
 				},
@@ -108,7 +112,7 @@ export function statusLayer(
 }
 
 function fleetHealth(
-	records: readonly FleetRecord[],
+	counts: Pick<FleetHealth, "queued" | "running" | "waiting">,
 	observations: readonly GithubObservation[],
 	observed: Pick<FleetHealth, "concurrency" | "lastCapacityRejection" | "lastSchedulerPass" | "staleAfterMs">,
 	observedAt: number,
@@ -118,15 +122,8 @@ function fleetHealth(
 		observedAt,
 		version: 2,
 		...observed,
-		queued: records.filter((record) => record.step === "queued").length,
-		running: records.filter(executing).length,
-		waiting: waitingCounts(records),
+		...counts,
 	};
-}
-
-function waitingCounts(records: Parameters<typeof views>[0]) {
-	const { waiting } = views(records);
-	return { automation: waiting.automation.length, maintainer: waiting.maintainer.length, orchestrator: waiting.orchestrator.length };
 }
 
 function readSnapshot(snapshot: Ref.Ref<FleetHealth | null>) {

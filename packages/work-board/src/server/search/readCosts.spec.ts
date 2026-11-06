@@ -1,6 +1,7 @@
 import { expect } from "vitest";
 import { outcomes } from "@shivaedev/test-story/server/outcomes.ts";
 import { indexedAliases } from "#test/indexedAliases.ts";
+import { indexedSettled } from "#test/indexedSettled.ts";
 import { indexedFiles, indexStory } from "#test/indexStory.ts";
 
 const NOTES = 100;
@@ -28,5 +29,31 @@ indexStory.it(
 			["body of alias/note.md", () => bodyOf("alias/note.md"), "# Second"],
 			["unavailable files", () => unavailableFiles(), []],
 		]);
+	},
+);
+
+indexStory.it(
+	"a reported edit reads only the edited file while the settled catalogue and archive state stand unchanged",
+	[indexedFiles({ "a.md": "---\nid: a\n---\n# Alpha", "b.md": "# Beta" }), indexedSettled(["settled-one", "settled-two"])],
+	function* ({ editorWrites, filesRead, settledIds, watcherReports }) {
+		yield* editorWrites("a.md", "---\nid: a\n---\n# Alpha, revised");
+		yield* watcherReports("a.md");
+
+		yield* outcomes([
+			["files read", () => filesRead(), ["a.md"]],
+			["settled records", () => settledIds(), ["settled-one", "settled-two"]],
+		]);
+	},
+);
+
+indexStory.it(
+	"the next reported change picks up a record another process appended to the settled catalogue",
+	[indexedFiles({ "a.md": "# Alpha" }), indexedSettled(["settled-one"])],
+	function* ({ anotherProcessSettles, editorWrites, settledIds, watcherReports }) {
+		yield* anotherProcessSettles("settled-two");
+		yield* editorWrites("a.md", "# Alpha, revised");
+		yield* watcherReports("a.md");
+
+		expect(yield* settledIds()).toEqual(["settled-one", "settled-two"]);
 	},
 );

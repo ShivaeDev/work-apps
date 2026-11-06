@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { Context, Deferred, Effect, Fiber, FileSystem, Layer, type Path } from "effect";
 import { storyKit } from "@shivaedev/test-story/server/storyKit.ts";
+import type { Snapshot as BoardSnapshot } from "@shivaedev/work-board/server/search/snapshot.ts";
 import { Workspace } from "@shivaedev/work-board/server/workspace.ts";
 import { briefRevision } from "#board/briefRevision.ts";
 import { publishAfterBoardPass, withBoardReadPass, workMetadata } from "#board/readPass.ts";
@@ -27,14 +28,19 @@ export const boardReadStory = storyKit({
 			}
 			const context = yield* Layer.build(state.fixture.board.pipe(Layer.provideMerge(state.fixture.services)));
 			state.board = Context.get(context, BoardGateway);
+			state.workspace = Context.get(context, Workspace);
 			state.fixture.services = Layer.succeedContext<FileSystem.FileSystem | Path.Path>(context);
-			yield* state.fixture.observeWith(Context.get(context, Workspace));
+			yield* state.fixture.observeWith(state.workspace);
 		},
 	},
 	clock: "live",
 	*create() {
 		const fixture = yield* boardReads(0);
-		const optional: { board: typeof BoardGateway.Service | undefined } = { board: undefined };
+		const optional: {
+			board: typeof BoardGateway.Service | undefined;
+			indexRead: BoardSnapshot | undefined;
+			workspace: typeof Workspace.Service | undefined;
+		} = { board: undefined, indexRead: undefined, workspace: undefined };
 		const publications: string[] = [];
 		return { ...optional, fixture, fs: yield* FileSystem.FileSystem, publications };
 	},
@@ -60,6 +66,12 @@ export const boardReadStory = storyKit({
 		const approvedIds = approvedWorkIds(resolveHost(fixture.root, { database: syntheticDatabase, provider: "local" })).pipe(
 			Effect.provide(fixture.services),
 		);
+		function index() {
+			if (state.workspace === undefined) {
+				throw new Error("The headless Board workspace did not open");
+			}
+			return state.workspace.index().pipe(Effect.orDie);
+		}
 		function read(id: string, options?: { readonly fresh?: boolean }) {
 			return Effect.suspend(() => {
 				story.tell(`read Board work ${id}${options?.fresh ? " freshly" : ""}`);
@@ -86,6 +98,13 @@ export const boardReadStory = storyKit({
 				story.tell("defer the generated status publication");
 				return publishAfterBoardPass(publish);
 			},
+			directoriesReadDuring: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+				Effect.gen(function* () {
+					const before = fixture.directoryReads();
+					yield* effect;
+					story.tell("count the directories read meanwhile");
+					return fixture.directoryReads() - before;
+				}),
 			duringOnePass: <A, E, R>(effect: Effect.Effect<A, E, R>) => {
 				story.tell("start a Board read pass");
 				return withBoardReadPass(effect).pipe(Effect.provide(fixture.services));
@@ -105,6 +124,11 @@ export const boardReadStory = storyKit({
 					},
 				};
 			}),
+			laterIndexRead: () =>
+				Effect.map(index(), (snapshot) => {
+					story.tell("read the Board index again and compare it with the earlier read");
+					return snapshot === state.indexRead ? "the same snapshot" : "a rebuilt snapshot";
+				}),
 			listingFailure: () => refusal(boardSnapshot(fixture.root, fixture.root).pipe(Effect.provide(fixture.services))),
 			makeReadable: () => {
 				story.tell("every Board file becomes readable again");
@@ -122,6 +146,11 @@ export const boardReadStory = storyKit({
 					return (yield* fs.exists(path)) ? yield* fs.readFileString(path) : undefined;
 				}),
 			read,
+			readIndex: () =>
+				Effect.map(index(), (snapshot) => {
+					story.tell("read the Board index");
+					state.indexRead = snapshot;
+				}),
 			readInPass: (id: string, options?: { readonly fresh?: boolean }) => {
 				story.tell(`read Board work ${id} in a new pass`);
 				return withBoardReadPass(board.get(id, options)).pipe(Effect.provide(fixture.services));
@@ -170,5 +199,11 @@ export function hasBoardItems(count: number) {
 		for (let index = 0; index < count; index += 1) {
 			yield* fixture.write(`${index}.md`, fixture.source(`item.${index}`));
 		}
+	});
+}
+
+export function namesMissingArea() {
+	return boardReadStory.trait("files", "an open Board item names an area folder that does not exist", function* ({ fixture }) {
+		yield* fixture.write("area.md", "---\nid: item.area\nkind: task\nareas: [missing]\n---\n# Area\n");
 	});
 }

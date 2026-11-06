@@ -1,7 +1,7 @@
 import { expect } from "@effect/vitest";
 import { Effect } from "effect";
 import { outcomes } from "@shivaedev/test-story/server/outcomes.ts";
-import { boardReadStory, hasBoardItems } from "#test/boardReadStory.ts";
+import { boardReadStory, hasBoardItems, namesMissingArea } from "#test/boardReadStory.ts";
 import { watchedBoardReads } from "#test/watchedBoardReads.ts";
 
 boardReadStory.it(
@@ -68,5 +68,28 @@ boardReadStory.it(
 				expect(yield* refusalOf("item.0", { fresh: true })).toContain("Board source could not be read: 0.md");
 			}),
 		);
+	},
+);
+
+boardReadStory.it(
+	"a fresh read of an unchanged brief keeps the Board index without a rebuild",
+	[hasBoardItems(2)],
+	function* ({ laterIndexRead, readIndex, readInPass }) {
+		yield* readInPass("item.0");
+		yield* readIndex();
+
+		yield* readInPass("item.0", { fresh: true });
+
+		expect(yield* laterIndexRead()).toBe("the same snapshot");
+	},
+);
+
+boardReadStory.it(
+	"a later read pass over the same Board index checks no area folders again",
+	[hasBoardItems(1), namesMissingArea()],
+	function* ({ directoriesReadDuring, readInPass }) {
+		yield* readInPass("item.0");
+
+		expect(yield* directoriesReadDuring(readInPass("item.0"))).toBe(0);
 	},
 );

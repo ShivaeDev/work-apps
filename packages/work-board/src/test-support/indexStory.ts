@@ -1,4 +1,4 @@
-import { existsSync, renameSync, statSync, unlinkSync, utimesSync } from "node:fs";
+import { appendFileSync, existsSync, renameSync, statSync, unlinkSync, utimesSync } from "node:fs";
 import { join, relative } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { NodeServices } from "@effect/platform-node";
@@ -12,6 +12,7 @@ import { collectGarbage } from "./collectGarbage.ts";
 import { incrementalIndex } from "./incrementalIndex.ts";
 import { comparable, kept } from "./indexComparison.ts";
 import { indexState } from "./indexState.ts";
+import { SETTLED_CATALOGUE, settledLine } from "./settledCatalogue.ts";
 
 interface IndexEngine {
 	addDuringListing: boolean;
@@ -87,6 +88,11 @@ export const indexStory = storyKit({
 			return engine.before;
 		}
 		return {
+			anotherProcessSettles: (id: string) =>
+				Effect.sync(() => {
+					story.tell(`another process records ${id} in the settled catalogue`);
+					appendFileSync(join(engine.notes.root, SETTLED_CATALOGUE), settledLine(id));
+				}),
 			bodyOf: (file: string) =>
 				Effect.map(current(), (snapshot) => {
 					story.tell(`the reader reads the indexed body of ${file}`);
@@ -240,6 +246,11 @@ export const indexStory = storyKit({
 				Effect.map(current(), (snapshot) => {
 					story.tell(`the reader searches the index for ${JSON.stringify(query)} and reads the title of ${id}`);
 					return searchMatch(snapshot.entries, query).results.find((entry) => entry.id === id)?.title ?? "not found";
+				}),
+			settledIds: () =>
+				Effect.map(current(), (snapshot) => {
+					story.tell("the reader reads which settled records the index knows");
+					return [...(snapshot.model.settled?.keys() ?? [])].sort(Order.String);
 				}),
 			unavailableFiles: () =>
 				Effect.map(current(), (snapshot) => {

@@ -12,6 +12,7 @@ export const boardReads = Effect.fn("BoardTest.boardReads")(function* (count: nu
 	const unreadable = new Set<string>();
 	let workspace: typeof Workspace.Service | undefined;
 	let announce = true;
+	let directoryReads = 0;
 	function refresh(files: readonly string[]) {
 		return workspace && announce
 			? workspace.settings().pipe(Effect.flatMap(({ changes }) => changes.refreshPaths?.(files) ?? Effect.void))
@@ -21,9 +22,12 @@ export const boardReads = Effect.fn("BoardTest.boardReads")(function* (count: nu
 	const tracked: FileSystem.FileSystem = {
 		...fs,
 		readDirectory: (folder) =>
-			unreadable.has(path.relative(root, folder) || ".")
-				? Effect.fail(PlatformError.systemError({ _tag: "PermissionDenied", method: "readDirectory", module: "FileSystem" }))
-				: fs.readDirectory(folder),
+			Effect.suspend(() => {
+				directoryReads += 1;
+				return unreadable.has(path.relative(root, folder) || ".")
+					? Effect.fail(PlatformError.systemError({ _tag: "PermissionDenied", method: "readDirectory", module: "FileSystem" }))
+					: fs.readDirectory(folder);
+			}),
 		readFile: (file) =>
 			unreadable.has(path.relative(root, file))
 				? Effect.fail(PlatformError.systemError({ _tag: "PermissionDenied", method: "readFile", module: "FileSystem" }))
@@ -62,6 +66,7 @@ export const boardReads = Effect.fn("BoardTest.boardReads")(function* (count: nu
 			Layer.provide(services),
 			Layer.provide(Layer.succeed(Clock.Clock, Clock.Clock.defaultValue())),
 		),
+		directoryReads: () => directoryReads,
 		observeWith: (board: typeof Workspace.Service) =>
 			Effect.sync(() => {
 				workspace = board;

@@ -1,4 +1,5 @@
 import { Effect, Path, Schema } from "effect";
+import type { MetadataDocument } from "@shivaedev/work-board/integration/metadata.ts";
 import { documentSource } from "@shivaedev/work-board/server/metadata/model.ts";
 import type { Snapshot } from "@shivaedev/work-board/server/search/snapshot.ts";
 import { Workspace } from "@shivaedev/work-board/server/workspace.ts";
@@ -8,6 +9,29 @@ import { recordBoardWrite } from "#board/readPass.ts";
 import { warnSnapshotProblems } from "#board/warnSnapshotProblems.ts";
 import { metadataProblem, workDocument } from "#board/workPolicy.ts";
 import { BoardFailure, Priority } from "#policy.ts";
+
+const freshDocument = Effect.fn("FleetBoard.freshDocument")(function* (realRoot: string, indexed: MetadataDocument, workId: string) {
+	const workspace = yield* Workspace;
+	const fresh = yield* workspace
+		.metadata(indexed.file)
+		.pipe(
+			Effect.mapError(
+				(error) =>
+					new BoardFailure({ code: "incomplete-observation", message: `Board source could not be read: ${indexed.file} (${error.message})` }),
+			),
+		);
+	const problem = metadataProblem(fresh);
+	if (problem) {
+		return yield* Effect.fail(problem);
+	}
+	if (fresh.parsed.fields.id !== workId) {
+		return yield* Effect.fail(new BoardFailure({ code: "board-item-missing", message: `Board item no longer exists: ${workId}`, workId }));
+	}
+	if (documentSource(fresh) !== documentSource(indexed)) {
+		yield* recordBoardWrite(realRoot, fresh.file);
+	}
+	return fresh;
+});
 
 export const readWork = Effect.fn("FleetBoard.readWork")(function* (current: Snapshot, workId: string, options?: { readonly fresh?: boolean }) {
 	const workspace = yield* Workspace;
@@ -24,23 +48,7 @@ export const readWork = Effect.fn("FleetBoard.readWork")(function* (current: Sna
 	}
 	let found = yield* workDocument(root, observed, workId);
 	if (options?.fresh) {
-		const fresh = yield* workspace
-			.metadata(found.file)
-			.pipe(
-				Effect.mapError(
-					(error) =>
-						new BoardFailure({ code: "incomplete-observation", message: `Board source could not be read: ${found.file} (${error.message})` }),
-				),
-			);
-		const problem = metadataProblem(fresh);
-		if (problem) {
-			return yield* Effect.fail(problem);
-		}
-		if (fresh.parsed.fields.id !== workId) {
-			return yield* Effect.fail(new BoardFailure({ code: "board-item-missing", message: `Board item no longer exists: ${workId}`, workId }));
-		}
-		found = fresh;
-		yield* recordBoardWrite(realRoot, fresh.file);
+		found = yield* freshDocument(realRoot, found, workId);
 	}
 	const deliverable = fleetDeliverable(found.parsed);
 	if (deliverable !== undefined && deliverable !== "report") {

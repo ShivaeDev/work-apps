@@ -2,16 +2,16 @@ import { Clock, Context, Effect, FileSystem, Option, Path, type PlatformError, R
 import type { InternalServerError } from "@shivaedev/errors/taxonomy.ts";
 import type { MetadataDocument } from "#integration/metadata.ts";
 import type { Indexing } from "#rpc/Indexing.ts";
-import { refreshArchived } from "#server/archive/documents.ts";
+import { archiveStateReader, refreshArchived } from "#server/archive/documents.ts";
 import { loadSettled } from "#server/archive/loadSettled.ts";
-import { readCatalogue } from "#server/archive/settledCatalogue.ts";
+import { catalogueReader } from "#server/archive/settledCatalogue.ts";
 import type { Changes } from "#server/files/changes.ts";
 import { invalidationsSince } from "#server/files/invalidations.ts";
 import type { MarkdownFile } from "#server/files/list.ts";
 import { markdownPaths } from "#server/files/markdownPath.ts";
 import type { metadataModel } from "#server/metadata/model.ts";
 import { updateModel } from "#server/metadata/updateModel.ts";
-import { archiveInventory } from "./archiveInventory.ts";
+import { type ArchiveReads, archiveInventory } from "./archiveInventory.ts";
 import type { Entry } from "./entries.ts";
 import { fileCounter } from "./fileCounter.ts";
 import { type IndexedDocument, readDocument } from "./readDocument.ts";
@@ -73,6 +73,7 @@ export const searchSnapshot = Effect.fn("WorkBoard.searchSnapshot")(function* (
 	let records = new Map<string, IndexedDocument>();
 	let listed = new Map<string, MarkdownFile>();
 	const enrich = updateEntries();
+	const archiveReads: ArchiveReads = { catalogue: catalogueReader(root), state: archiveStateReader(root) };
 	function find(file: MarkdownFile, dirty: ReadonlySet<string> | undefined, resolve: (file: string) => Effect.Effect<string | undefined>) {
 		const previous = records.get(file.path);
 		return shouldRead(file, previous, listed, dirty)
@@ -113,19 +114,19 @@ export const searchSnapshot = Effect.fn("WorkBoard.searchSnapshot")(function* (
 			}
 		}
 		const modified = new Map(files.map((file) => [file.path, file.modified]));
-		const moved = yield* archiveInventory(root, documents, modified, now, unavailable);
+		const moved = yield* archiveInventory(root, documents, modified, now, unavailable, archiveReads);
 		housekeptAt = now;
 		if (moved.length > 0) {
 			yield* refreshArchived(changes, moved);
 			return yield* buildSnapshot(hit);
 		}
-		const settled = new Map((yield* readCatalogue(root)).map((record) => [record.id, record.file]));
+		const { files: settled } = yield* archiveReads.catalogue;
 		const model = updateModel(hit?.model, documents, unavailable, home ?? files[0]?.path, settled);
 		const enriched = enrich(next, model);
 		// Only the file services: the fiber context holds this call's stack frame, which retains the previous snapshot.
 		const services = (yield* Effect.context<FileSystem.FileSystem | Path.Path>()).pipe(Context.pick(FileSystem.FileSystem, Path.Path));
 		const snapshot: Snapshot = {
-			archived: (selection) => loadSettled(root, snapshot, selection).pipe(Effect.provideContext(services)),
+			archived: (selection) => loadSettled(root, snapshot, selection, archiveReads.catalogue).pipe(Effect.provideContext(services)),
 			documents,
 			entries: enriched,
 			maintainer,
