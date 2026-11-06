@@ -1,4 +1,4 @@
-import { Clock, Effect, type FileSystem, Option, type Path, type PlatformError, Ref, Semaphore, SubscriptionRef } from "effect";
+import { Clock, Context, Effect, FileSystem, Option, Path, type PlatformError, Ref, Semaphore, SubscriptionRef } from "effect";
 import type { InternalServerError } from "@shivaedev/errors/taxonomy.ts";
 import type { MetadataDocument } from "#integration/metadata.ts";
 import type { Indexing } from "#rpc/Indexing.ts";
@@ -122,7 +122,8 @@ export const searchSnapshot = Effect.fn("WorkBoard.searchSnapshot")(function* (
 		const settled = new Map((yield* readCatalogue(root)).map((record) => [record.id, record.file]));
 		const model = updateModel(hit?.model, documents, unavailable, home ?? files[0]?.path, settled);
 		const enriched = enrich(next, model);
-		const services = yield* Effect.context<FileSystem.FileSystem | Path.Path>();
+		// Only the file services: the fiber context holds this call's stack frame, which retains the previous snapshot.
+		const services = (yield* Effect.context<FileSystem.FileSystem | Path.Path>()).pipe(Context.pick(FileSystem.FileSystem, Path.Path));
 		const snapshot: Snapshot = {
 			archived: (selection) => loadSettled(root, snapshot, selection).pipe(Effect.provideContext(services)),
 			documents,

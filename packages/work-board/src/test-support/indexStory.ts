@@ -8,7 +8,9 @@ import { inboxItems } from "#server/attention/inbox.ts";
 import { searchMatch } from "#server/search/match.ts";
 import { type Snapshot, searchSnapshot } from "#server/search/snapshot.ts";
 import { type Folder, folder } from "./board.ts";
+import { collectGarbage } from "./collectGarbage.ts";
 import { incrementalIndex } from "./incrementalIndex.ts";
+import { comparable, kept } from "./indexComparison.ts";
 import { indexState } from "./indexState.ts";
 
 interface IndexEngine {
@@ -19,6 +21,7 @@ interface IndexEngine {
 	lastRead?: Snapshot;
 	notes: Folder;
 	read?: Effect.Success<ReturnType<typeof searchSnapshot>>;
+	readonly released: Map<string, WeakRef<Snapshot>>;
 	unreadable?: string;
 }
 
@@ -39,40 +42,6 @@ function advancingListing(engine: IndexEngine, index: Effect.Success<ReturnType<
 		return index.update(["added.md"]);
 	});
 	return { ...index.changes, inventory: index.changes.inventory.pipe(Effect.tap(() => addFile)) };
-}
-
-// Maps and Sets compare by content and missing fields equal undefined ones, as a reader of the index sees them.
-function comparable(value: unknown): unknown {
-	if (value instanceof Map) {
-		return [...value].map(comparable);
-	}
-	if (value instanceof Set) {
-		return [...value].map(comparable);
-	}
-	if (Array.isArray(value)) {
-		return value.map(comparable);
-	}
-	if (value && typeof value === "object") {
-		return Object.fromEntries(
-			Object.entries(value)
-				.filter(([, field]) => field !== undefined)
-				.map(([key, field]) => [key, comparable(field)]),
-		);
-	}
-	return value;
-}
-
-function kept(before: Snapshot, after: Snapshot) {
-	return after.documents
-		.filter((document) => {
-			const previous = before.documents.find((candidate) => candidate.file === document.file);
-			function entries(snapshot: Snapshot) {
-				return snapshot.entries.filter((entry) => entry.file === document.file);
-			}
-			return previous === document && entries(before).every((entry, index) => entries(after)[index] === entry);
-		})
-		.map((document) => document.file)
-		.sort(Order.String);
 }
 
 export const indexStory = storyKit({
@@ -100,7 +69,7 @@ export const indexStory = storyKit({
 			Effect.sync(() => folder({})),
 			(acquired) => Effect.sync(acquired.remove),
 		);
-		const engine: IndexEngine = { addDuringListing: false, notes };
+		const engine: IndexEngine = { addDuringListing: false, notes, released: new Map() };
 		return engine;
 	},
 	inspect: (engine) => ({ blocked: [...(engine.index?.blocked ?? [])], reads: engine.index?.reads, root: engine.notes.root }),
@@ -227,6 +196,13 @@ export const indexStory = storyKit({
 					story.tell("the reader counts the path and directory checks of the read");
 					return indexed(engine).index.checks();
 				}),
+			readerLetsGoOfRead: (name: string) => {
+				// Told before the read: the story's call sites would otherwise keep the read in memory.
+				story.tell(`the reader reads the index as ${name} and lets go of that read`);
+				return Effect.map(current(), (snapshot) => {
+					engine.released.set(name, new WeakRef(snapshot));
+				});
+			},
 			readerReadsIndex: () =>
 				Effect.map(current(), (snapshot) => {
 					story.tell("the reader reads the index");
@@ -242,6 +218,12 @@ export const indexStory = storyKit({
 					story.tell("file permissions recover");
 					indexed(engine).index.blocked.clear();
 					indexed(engine).index.reads.length = 0;
+				}),
+			releasedReadsInMemory: () =>
+				Effect.gen(function* () {
+					story.tell("garbage collection runs and the reader lists the reads it let go of that are still in memory");
+					yield* collectGarbage;
+					return [...engine.released].filter(([, read]) => read.deref() !== undefined).map(([name]) => name);
 				}),
 			revisionOfRead: () =>
 				Effect.gen(function* () {
