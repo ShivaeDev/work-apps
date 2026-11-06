@@ -20,7 +20,7 @@ The plugin needs a running Work Board. It finds one by walking up from the sessi
 npx @shivaedev/work-board .work
 ```
 
-Without a `.work` folder, the pane and every tool say the session's folder has no Work Board and how to start one; with a Board that is not running, they say so and name the start command. The band stays hidden until the Board answers. Pressing a Needs you item opens it with `open -g` at the URL the Board says it is served on, so opening items works on macOS.
+Without a `.work` folder, the pane and every tool say the session's folder has no Work Board and how to start one; with a Board that is not running, they say so and name the start command. Claude Code waits 30 seconds for each Board answer; a Board still working after that is reported as busy, not stopped, and the next refresh asks again. The band stays hidden until the Board answers. Pressing a Needs you item opens it with `open -g` at the URL the Board says it is served on, so opening items works on macOS.
 
 The plugin only reads the Board. Answer decisions in the Board itself or through [`@shivaedev/work-board`](../work-board/README.md).
 
@@ -28,7 +28,7 @@ The plugin only reads the Board. Answer decisions in the Board itself or through
 
 The pane folds goals with status `done` under an “Achieved (N)” row, closed by default. Click it to show those goals. Open goals stay visible, including goals whose tasks are all done. In flight and goal running counts use the same Board overview snapshot. If Fleet cannot be reached, In flight shows why it is unavailable.
 
-Areas appear as wrapping chips. Green means no holder and no approved task queued; amber marks a held area or a queue of fewer than five tasks; red marks five or more queued tasks. Each chip names its state and queue count. Open a chip to read its holders, stages and PR links, followed by the approved queue in Fleet's order. Package folders and the Board's other repository areas stay visible even when idle. A Fleet daemon that does not supply availability is shown as unknown.
+Areas lists only the areas Fleet holds or queues work for, as wrapping chips with held areas first; free areas are left out, and with none busy the section says no area is held or queued. Amber marks a held area or a queue of fewer than five tasks; red marks five or more queued tasks. Each chip names its state and queue count. Open a chip to read its holders, stages and PR links, followed by the approved queue in Fleet's order. A Fleet daemon that does not supply availability is shown as unknown.
 
 ### Install
 

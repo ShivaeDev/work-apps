@@ -11,16 +11,16 @@ const files = Object.fromEntries(
 );
 
 pluginFleet.it(
-	"the plugin's area chips read live Fleet ownership and queues through Board HTTP",
+	"the plugin's area chips read live Fleet ownership and queues through Board HTTP and leave idle folders out",
 	[boardWork(files)],
 	function* ({ approve, admit, openPane }) {
 		yield* approve("holder");
 		yield* admit();
 		const pane = yield* openPane();
 		yield* outcomes([
+			["Chips", () => pane.areaChips(), ["work-fleet", "work-board"]],
 			["Held area", () => pane.areaState("work-fleet"), { color: "#d74253", state: "held · 5 queued" }],
 			["Short queue", () => pane.areaState("work-board"), { color: "#ad7400", state: "unheld · 1 queued" }],
-			["Idle area", () => pane.areaState("free"), { color: "#16853f", state: "free" }],
 		]);
 	},
 );

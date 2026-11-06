@@ -15,8 +15,8 @@ export function areasOf(value: unknown): WorkboardBlock<WorkboardArea> {
 			return { prUrl: text(entry.prUrl) ?? null, stage: text(entry.stage) ?? "unknown", title: titles.get(workId) ?? workId, workId };
 		});
 	}
-	return {
-		items: records(value.areas).map((entry) => ({ area: text(entry.area) ?? "unknown", holders: tasks(entry.holders), queue: tasks(entry.queue) })),
-		problem: null,
-	};
+	const busy = records(value.areas)
+		.map((entry) => ({ area: text(entry.area) ?? "unknown", holders: tasks(entry.holders), queue: tasks(entry.queue) }))
+		.filter((area) => area.holders.length > 0 || area.queue.length > 0);
+	return { items: [...busy.filter((area) => area.holders.length > 0), ...busy.filter((area) => area.holders.length === 0)], problem: null };
 }

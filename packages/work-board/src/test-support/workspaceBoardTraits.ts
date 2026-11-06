@@ -1,5 +1,5 @@
 import { relative } from "node:path";
-import { Clock, Effect } from "effect";
+import { Clock, Duration, Effect } from "effect";
 import { vi } from "vitest";
 import { ServiceUnavailable } from "@shivaedev/errors/taxonomy.ts";
 import type { FleetItems } from "#diagnostics/fleetItems.ts";
@@ -42,6 +42,19 @@ export function fleetDaemon(items: FleetItems) {
 			engine.fleetPort = daemon.port;
 		},
 	);
+}
+
+export function slowFleetDaemon(items: FleetItems, seconds: number, briefSeconds = 0) {
+	return boardStory.trait("project", `Fleet takes ${seconds} seconds to report its items and ${briefSeconds} to check briefs`, function* (engine) {
+		const missing = { cause: "Not configured for the story", observedAt: 0, state: "not-configured" as const };
+		const daemon = yield* rawDiagnosticsDaemon(
+			() => ({ codex: missing, fleet: missing, github: missing }),
+			0,
+			Effect.as(Effect.sleep(Duration.seconds(seconds)), items),
+			Effect.as(Effect.sleep(Duration.seconds(briefSeconds)), []),
+		);
+		engine.fleetPort = daemon.port;
+	});
 }
 
 export function rejectingFleetDaemon(message: string) {
