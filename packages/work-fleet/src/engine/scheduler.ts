@@ -74,9 +74,7 @@ export const cycle = inBoardReadPass(
 	Effect.gen(function* () {
 		const fleet = yield* Fleet;
 		const records = yield* fleet.list();
-		const active = activeRecords(records, yield* fleet.settledCompletions(records)).filter(
-			({ value }) => value.step !== "queued" || needsReleasedDelivery(value),
-		);
+		const active = activeRecords(records).filter(({ value }) => value.step !== "queued" || needsReleasedDelivery(value));
 		const sweeps = yield* Effect.forEach(
 			active.filter(({ value }) => openSweep(value)),
 			({ value }) => fleet.reconcile(value.workId).pipe(Effect.result),

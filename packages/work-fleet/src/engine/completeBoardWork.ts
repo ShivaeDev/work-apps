@@ -4,7 +4,6 @@ import { briefChanged } from "#engine/boardBrief.ts";
 import { refuseDeliveredId } from "#engine/deliveredId.ts";
 import type { EngineState } from "#engine/makeState.ts";
 import type { FleetRecord } from "#model.ts";
-import { BoardFailure } from "#policy.ts";
 import type { Versioned } from "#storage/model.ts";
 
 const { revisionOf } = responses;
@@ -36,18 +35,13 @@ export function completeBoardWork(state: EngineState) {
 		const action = boardCompletionAction(stored.value);
 		const complete = state.board.complete;
 		const sourcePath = stored.value.boardSourcePath;
-		let observed = true;
-		function unobserved(error: BoardFailure) {
-			if (error.code === "incomplete-observation") {
-				observed = false;
-			}
-		}
-		if (
+		const applicable =
 			action !== undefined
 			&& sourcePath !== undefined
 			&& complete !== undefined
-			&& stored.value.attempts.some((attempt) => attempt.role !== "reviewer" && attempt.receipt !== undefined)
-		) {
+			&& stored.value.attempts.some((attempt) => attempt.role !== "reviewer" && attempt.receipt !== undefined);
+		let failed = false;
+		if (applicable) {
 			let source = sourcePath;
 			yield* state.board.get(stored.value.workId).pipe(
 				Effect.flatMap((work) => {
@@ -58,9 +52,7 @@ export function completeBoardWork(state: EngineState) {
 				}),
 				Effect.tap(() => Effect.sync(() => reported.delete(stored.value.workId))),
 				Effect.catch((error) => {
-					if (error instanceof BoardFailure) {
-						unobserved(error);
-					}
+					failed = true;
 					const warning = JSON.stringify([source, error.message]);
 					if (reported.get(stored.value.workId) === warning) {
 						return Effect.void;
@@ -73,12 +65,12 @@ export function completeBoardWork(state: EngineState) {
 		if (state.board.closeFinishedDecisions !== undefined) {
 			yield* state.board.closeFinishedDecisions({ workId: stored.value.workId }).pipe(
 				Effect.catchTag("BoardFailure", (error) => {
-					unobserved(error);
+					failed = true;
 					return Effect.logWarning(error.message);
 				}),
 			);
 		}
-		return action === undefined || !observed ? stored : yield* settleCompletion(state, stored, action);
+		return applicable && !failed ? yield* settleCompletion(state, stored, action) : stored;
 	});
 }
 
