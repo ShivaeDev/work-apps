@@ -1,5 +1,6 @@
-import { Effect, FileSystem, Order, Path, Schema } from "effect";
+import { Effect, FileSystem, Order, Path, type PlatformError, Schema } from "effect";
 import type { MetadataDocument } from "#integration/metadata.ts";
+import { cachedRead } from "#server/files/cachedRead.ts";
 import { type Changes, refreshWritten } from "#server/files/changes.ts";
 
 const RETENTION = 14 * 24 * 60 * 60 * 1000;
@@ -23,16 +24,34 @@ function identity(document: MetadataDocument) {
 	return document.parsed.fields.id ?? document.file.replace(/^(?:tasks|archive)\//u, "");
 }
 
+export interface ArchiveState {
+	readonly restored: ReadonlySet<string>;
+	readonly saved: string;
+}
+
+const STATE_FILE = ".board-archive.json";
+
+function decodeState(saved: string) {
+	return Schema.decodeUnknownEffect(ArchivedIdentities)(saved).pipe(
+		Effect.orDie,
+		Effect.map((identities): ArchiveState => ({ restored: new Set(identities), saved })),
+	);
+}
+
+export function archiveStateReader(root: string) {
+	return cachedRead(root, STATE_FILE, { restored: new Set<string>(), saved: "[]" }, decodeState);
+}
+
 export const archiveDocuments = Effect.fn("WorkBoard.archiveDocuments")(function* (
 	root: string,
 	documents: readonly MetadataDocument[],
 	now: number,
+	state?: Effect.Effect<ArchiveState, PlatformError.PlatformError, FileSystem.FileSystem | Path.Path>,
 ) {
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
-	const stateFile = path.join(root, ".board-archive.json");
-	const saved = (yield* fs.exists(stateFile)) ? yield* fs.readFileString(stateFile) : "[]";
-	const restored = new Set(yield* Schema.decodeUnknownEffect(ArchivedIdentities)(saved).pipe(Effect.orDie));
+	const stateFile = path.join(root, STATE_FILE);
+	const { restored, saved } = yield* state ?? archiveStateReader(root);
 	const archived = new Set(documents.filter((document) => document.file.startsWith("archive/")).map(identity));
 	const moved: string[] = [];
 	for (const document of documents) {

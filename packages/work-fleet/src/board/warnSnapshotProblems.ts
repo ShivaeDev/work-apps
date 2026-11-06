@@ -7,8 +7,13 @@ import { metadataProblem, snapshotProblems } from "#board/workPolicy.ts";
 import { BoardFailure } from "#policy.ts";
 
 const previous = new Map<string, ReadonlyMap<string, string>>();
+// A snapshot never changes, and every read pass consults it, so its problems are checked once; an area folder created outside the Board shows on the next snapshot.
+const checked = new WeakSet<BoardSnapshot>();
 
 export const warnSnapshotProblems = Effect.fn("FleetBoard.warnSnapshotProblems")(function* (root: string, snapshot: BoardSnapshot) {
+	if (checked.has(snapshot)) {
+		return;
+	}
 	const seen = previous.get(root);
 	const next = new Map<string, string>();
 	const problems = snapshotProblems(snapshot);
@@ -38,4 +43,5 @@ export const warnSnapshotProblems = Effect.fn("FleetBoard.warnSnapshotProblems")
 	} else {
 		previous.set(root, next);
 	}
+	checked.add(snapshot);
 });

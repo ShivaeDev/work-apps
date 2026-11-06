@@ -48,3 +48,18 @@ publicationStory.it("a failed publication keeps execution usable and the next sc
 	expect(fleet.publications.status()).toContain("Stage: done");
 	expect(fleet.publications.task()).toBe(fleet.publications.source());
 });
+publicationStory.it("idle passes over unchanged work leave the status unrendered until the work changes", [publishedBoard], function* (fleet) {
+	yield* fleet.publications.observeWrites();
+	yield* fleet.publications.idlePass();
+	yield* fleet.publications.idlePass();
+	expect(fleet.publications.publishedWorkIds()).toEqual([]);
+	yield* fleet.prepareWork("one");
+	expect(fleet.publications.publishedWorkIds()).toEqual([["one"]]);
+});
+publicationStory.it("an idle pass repairs a status write that failed while the work stayed unchanged", [publishedBoard], function* (fleet) {
+	yield* fleet.publications.blockStatus();
+	yield* fleet.prepareWork("one");
+	fleet.publications.restoreStatus();
+	yield* fleet.publications.idlePass();
+	expect(fleet.publications.status()).toContain("/_board/item/one");
+});

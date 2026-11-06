@@ -14,6 +14,8 @@ import type { ServingOptions } from "./servingEngine.ts";
 import { servingObservations } from "./servingObservations.ts";
 import { type BoardEngine, connected, served } from "./storyEngine.ts";
 
+const BOARD_OWNED = new Set(["board.sock", ".board-archive.json", ".board-settled/catalogue.jsonl"]);
+
 export function servingBoardVerbs(engine: BoardEngine, tell: (line: string) => void) {
 	const { documentAt, linked, changeSeen, launched, pluginBoard, pluginTools } = servingBoardReads(engine, tell);
 	return {
@@ -247,13 +249,13 @@ export function servingBoardVerbs(engine: BoardEngine, tell: (line: string) => v
 		},
 		visitedPaths: () =>
 			Effect.sync(() => {
-				tell("the reader lists every workspace path the board visited, apart from its own socket");
+				tell("the reader lists every workspace path the board visited, apart from its own socket and archive bookkeeping files");
 				const paths = servingObservations(engine).paths;
 				if (!paths) {
 					throw new Error("Add the directoryReadsRecorded trait before listing visited paths");
 				}
 				return [...new Set(paths.visited.map((path) => relative(engine.notes.root, path)))]
-					.filter((path) => path !== "board.sock")
+					.filter((path) => !BOARD_OWNED.has(path))
 					.sort(Order.String);
 			}),
 	};

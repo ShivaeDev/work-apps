@@ -1,12 +1,17 @@
-import { Effect, FileSystem, Path } from "effect";
+import { Effect, FileSystem, Path, type PlatformError } from "effect";
 import { InternalServerError } from "@shivaedev/errors/taxonomy.ts";
 import { documentSource, metadataModel } from "#server/metadata/model.ts";
 import { readDocument } from "#server/search/readDocument.ts";
 import type { Snapshot } from "#server/search/snapshot.ts";
-import { readCatalogue, recordPath } from "./settledCatalogue.ts";
+import { catalogueReader, readCatalogue, recordPath, type SettledCatalogue } from "./settledCatalogue.ts";
 
-export const loadSettled = Effect.fn("WorkBoard.loadSettled")(function* (root: string, snapshot: Snapshot, selection: string) {
-	const catalogue = yield* readCatalogue(root);
+export const loadSettled = Effect.fn("WorkBoard.loadSettled")(function* (
+	root: string,
+	snapshot: Snapshot,
+	selection: string,
+	settled?: Effect.Effect<SettledCatalogue, PlatformError.PlatformError, FileSystem.FileSystem | Path.Path>,
+) {
+	const { records: catalogue } = yield* settled ?? catalogueReader(root);
 	const groups = new Set(catalogue.filter((record) => record.id === selection || record.file === selection).map((record) => record.item));
 	groups.add(selection);
 	const selected = snapshot.documents.find((document) => document.file === selection)?.parsed.fields.id;

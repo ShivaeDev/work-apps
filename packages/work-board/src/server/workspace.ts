@@ -93,7 +93,8 @@ export const Workspace = defineService({
 		}
 		return {
 			...metadata,
-			archived: (selection: string) => Effect.flatMap(index, (snapshot) => loadSettled(options.root, snapshot, selection)),
+			archived: (selection: string) =>
+				Effect.flatMap(index, (snapshot) => snapshot.archived?.(selection) ?? loadSettled(options.root, snapshot, selection)),
 			document,
 			index: () => index,
 			settings: () => Effect.succeed(settings),

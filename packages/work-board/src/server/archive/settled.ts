@@ -1,7 +1,7 @@
-import { Effect, FileSystem, Path } from "effect";
+import { Effect, FileSystem, Path, type PlatformError } from "effect";
 import type { MetadataDocument } from "#integration/metadata.ts";
 import { documentSource } from "#server/metadata/model.ts";
-import { appendCatalogue, readCatalogue, recordPath, type SettledRecord } from "./settledCatalogue.ts";
+import { appendCatalogue, catalogueReader, recordPath, type SettledCatalogue, type SettledRecord } from "./settledCatalogue.ts";
 import { settledPlan } from "./settledPlan.ts";
 import { settledRecords } from "./settledRecords.ts";
 
@@ -37,7 +37,11 @@ const moveSettled = Effect.fn("WorkBoard.moveSettled")(
 	),
 );
 
-export const archiveSettled = Effect.fn("WorkBoard.archiveSettled")(function* (root: string, documents: readonly MetadataDocument[]) {
+export const archiveSettled = Effect.fn("WorkBoard.archiveSettled")(function* (
+	root: string,
+	documents: readonly MetadataDocument[],
+	settled?: Effect.Effect<SettledCatalogue, PlatformError.PlatformError, FileSystem.FileSystem | Path.Path>,
+) {
 	const ids = new Set(documents.map((document) => document.parsed.fields.id));
 	const pending = documents.some(
 		({ parsed: { fields } }) =>
@@ -48,10 +52,10 @@ export const archiveSettled = Effect.fn("WorkBoard.archiveSettled")(function* (r
 	if (!pending && settledRecords(documents).length === 0) {
 		return [];
 	}
-	const catalogue = yield* readCatalogue(root);
+	const catalogue = yield* settled ?? catalogueReader(root);
 	const fs = yield* FileSystem.FileSystem;
 	const path = yield* Path.Path;
-	const planned = yield* Effect.filter(settledPlan(documents, catalogue), ({ document }) =>
+	const planned = yield* Effect.filter(settledPlan(documents, catalogue.byId), ({ document }) =>
 		fs.readFileString(path.join(root, document.file)).pipe(
 			Effect.map((source) => source === documentSource(document)),
 			Effect.catchIf(
@@ -63,8 +67,7 @@ export const archiveSettled = Effect.fn("WorkBoard.archiveSettled")(function* (r
 	if (planned.length === 0) {
 		return [];
 	}
-	const existing = new Set(catalogue.map((record) => record.id));
-	const added = planned.map(({ record }) => record).filter((record) => !existing.has(record.id));
+	const added = planned.map(({ record }) => record).filter((record) => !catalogue.byId.has(record.id));
 	// Publish locations before removing sources, so an interrupted move remains discoverable and can finish on the next read.
 	yield* appendCatalogue(root, added);
 	return (yield* Effect.forEach(planned, ({ document, record }) => moveSettled(root, document, record))).flat();

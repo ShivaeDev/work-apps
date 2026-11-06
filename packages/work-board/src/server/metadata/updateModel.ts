@@ -3,6 +3,9 @@ import { metadataProblems } from "./problems.ts";
 import { referencesOf } from "./referencesOf.ts";
 
 function changedSettledIds(before: ReadonlyMap<string, string> | undefined, after: ReadonlyMap<string, string> | undefined) {
+	if (before === after) {
+		return [];
+	}
 	return [...new Set([...(before?.keys() ?? []), ...(after?.keys() ?? [])])].filter((id) => before?.get(id) !== after?.get(id));
 }
 

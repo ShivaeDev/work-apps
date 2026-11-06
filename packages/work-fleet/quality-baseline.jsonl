@@ -152,7 +152,7 @@
 {"path":"packages/work-fleet/src/host/reportQuestion.spec.ts","rule":"effect/boundary","count":1}
 {"path":"packages/work-fleet/src/host/runtime.ts","rule":"biome/plugin","count":2}
 {"path":"packages/work-fleet/src/host/settledAnswers.spec.ts","rule":"effect/boundary","count":1}
-{"path":"packages/work-fleet/src/host/statusLayer.ts","rule":"effect/service-definition-assembly","count":6}
+{"path":"packages/work-fleet/src/host/statusLayer.ts","rule":"effect/service-definition-assembly","count":5}
 {"path":"packages/work-fleet/src/host/supervision.spec.ts","rule":"effect/boundary","count":7}
 {"path":"packages/work-fleet/src/host/supervisor.ts","rule":"effect/boundary","count":1}
 {"path":"packages/work-fleet/src/host/supervisorPort.ts","rule":"effect/boundary","count":1}
