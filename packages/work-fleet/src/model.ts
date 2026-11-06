@@ -57,6 +57,7 @@ const cycleFields = {
 	blocker: Schema.optional(Schema.String),
 	boardContext: Schema.optional(Schema.String),
 	boardRevision: Schema.String,
+	boardSettledRevision: Schema.optional(Schema.String),
 	boardSourcePath: Schema.optional(Schema.String),
 	checks: Schema.optional(Checks),
 	completedAt: Schema.optional(diagnostics.FleetTimestamp),

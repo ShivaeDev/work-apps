@@ -6,10 +6,11 @@ import { storyKit } from "@shivaedev/test-story/server/storyKit.ts";
 import { SchedulerPasses } from "#engine/health.ts";
 import { startScheduler } from "#engine/runScheduler.ts";
 import { admitApproved } from "#host/admission.ts";
-import { schedulerCadence } from "#host/commands.ts";
+import { schedulerCadence, wakeSchedulerOnInputs } from "#host/commands.ts";
 import type { HostStoryEngine } from "#test/HostStoryEngine.ts";
 import { hostDefinition } from "#test/hostStory.ts";
 import { hostVerbs } from "#test/hostVerbs.ts";
+import { settledWorkVerbs } from "#test/settledWorkVerbs.ts";
 
 function nextPass(passes: SubscriptionRef.SubscriptionRef<number>, after: number) {
 	return SubscriptionRef.changes(passes).pipe(
@@ -23,14 +24,14 @@ export function idleSchedulerVerbs(engine: HostStoryEngine, tell: (line: string)
 	return {
 		startIdleScheduler: () =>
 			Effect.gen(function* () {
-				tell("start Fleet admission and reconciliation on the test clock");
+				tell("start Fleet admission and reconciliation on the test clock, woken by Board changes");
 				const clock = yield* Clock.Clock;
 				const calls = vi.spyOn(engine.fleet, "reconcile");
 				yield* Effect.addFinalizer(() => Effect.sync(() => calls.mockRestore()));
-				const workers = yield* startScheduler(schedulerCadence, admitApproved(engine.fixture.host).pipe(Effect.orDie, Effect.asVoid)).pipe(
-					Effect.provideContext(engine.running.context),
-					Effect.provideService(Clock.Clock, clock),
-				);
+				const workers = yield* Effect.andThen(
+					wakeSchedulerOnInputs,
+					startScheduler(schedulerCadence, admitApproved(engine.fixture.host).pipe(Effect.orDie, Effect.asVoid)),
+				).pipe(Effect.provideContext(engine.running.context), Effect.provideService(Clock.Clock, clock));
 				const passes = Context.get(engine.running.context, SchedulerPasses);
 				const waiting = SubscriptionRef.changes(workers.admission.state).pipe(
 					Stream.filter((state) => state.status === "waiting"),
@@ -62,5 +63,9 @@ export const idleHost = storyKit({
 	...hostDefinition,
 	after: { configuration: (engine: HostStoryEngine) => withLive(engine.deploy()) },
 	clock: "test",
-	verbs: (engine: HostStoryEngine, story) => ({ ...hostVerbs(engine, story.tell), ...idleSchedulerVerbs(engine, story.tell) }),
+	verbs: (engine: HostStoryEngine, story) => ({
+		...hostVerbs(engine, story.tell),
+		...idleSchedulerVerbs(engine, story.tell),
+		...settledWorkVerbs(engine, story.tell),
+	}),
 });

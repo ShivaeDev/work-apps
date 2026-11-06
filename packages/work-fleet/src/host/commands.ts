@@ -84,22 +84,23 @@ export function hostScheduler(host: FleetHost) {
 			}),
 		),
 	);
-	return Effect.gen(function* () {
-		const { index } = yield* BoardIndex;
-		const events = yield* PubSub.subscribe(index.changes.events);
-		const reactivity = yield* Reactivity.Reactivity;
-		const live = yield* LiveConfig;
-		const invalidate = reactivity.invalidate(invalidationKeys([schedulerInputs.list]));
-		yield* live.changes.pipe(
-			Stream.drop(1),
-			Stream.runForEach(() => invalidate),
-			Effect.forkScoped,
-		);
-		yield* Stream.fromSubscription(events).pipe(
-			Stream.filter((change) => change._tag === "Watching" || change.paths.some((path) => path !== "fleet/status.md")),
-			Stream.runForEach(() => invalidate),
-			Effect.forkScoped,
-		);
-		return yield* run(schedulerCadence, admission);
-	});
+	return Effect.andThen(wakeSchedulerOnInputs, run(schedulerCadence, admission));
 }
+
+export const wakeSchedulerOnInputs = Effect.gen(function* () {
+	const { index } = yield* BoardIndex;
+	const events = yield* PubSub.subscribe(index.changes.events);
+	const reactivity = yield* Reactivity.Reactivity;
+	const live = yield* LiveConfig;
+	const invalidate = reactivity.invalidate(invalidationKeys([schedulerInputs.list]));
+	yield* live.changes.pipe(
+		Stream.drop(1),
+		Stream.runForEach(() => invalidate),
+		Effect.forkScoped,
+	);
+	yield* Stream.fromSubscription(events).pipe(
+		Stream.filter((change) => change._tag === "Watching" || change.paths.some((path) => path !== "fleet/status.md")),
+		Stream.runForEach(() => invalidate),
+		Effect.forkScoped,
+	);
+});

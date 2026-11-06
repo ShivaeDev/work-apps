@@ -13,6 +13,7 @@ import { workMetadata } from "#board/readPass.ts";
 import { readWork } from "#board/readWork.ts";
 import { recordDecisionResponse } from "#board/recordDecisionResponse.ts";
 import { upgradeDecisionClosure } from "#board/upgradeDecisionClosure.ts";
+import { workIndex } from "#board/workIndex.ts";
 import { metadataProblem } from "#board/workPolicy.ts";
 import { workRevision } from "#board/workRevision.ts";
 import { boardSnapshot } from "#board/workspace.ts";
@@ -68,9 +69,26 @@ export const MarkdownBoard = defineService({
 				Effect.mapError((error) => new BoardFailure({ message: error.message })),
 			);
 		}
-		return { decisionSnapshot, documents, fs, get, path, publish, realRoot, root, snapshot, sourceCreatedAt, sources, workspace };
+		function workRevisions() {
+			return sources.pipe(Effect.map((current) => workIndex(current).revision));
+		}
+		return { decisionSnapshot, documents, fs, get, path, publish, realRoot, root, snapshot, sourceCreatedAt, sources, workRevisions, workspace };
 	}),
-	methods: ({ root, realRoot, decisionSnapshot, documents, get, publish, path, snapshot, sources, sourceCreatedAt, workspace, fs }) => ({
+	methods: ({
+		root,
+		realRoot,
+		decisionSnapshot,
+		documents,
+		get,
+		publish,
+		path,
+		snapshot,
+		sources,
+		sourceCreatedAt,
+		workRevisions,
+		workspace,
+		fs,
+	}) => ({
 		...BoardGateway.of({
 			acknowledgeDecision: (input) =>
 				acknowledgeDecision(
@@ -123,6 +141,7 @@ export const MarkdownBoard = defineService({
 			report: publishReport(root, realRoot, documents),
 			respond: recordDecisionResponse(root, realRoot, snapshot),
 			sourceCreatedAt,
+			workRevisions,
 		}),
 	}),
 	requires: [BoardRoot, FileSystem.FileSystem, Path.Path, Workspace, BoardIndex],
