@@ -1,4 +1,4 @@
-import { Clock, Effect, Layer, Predicate, Schema } from "effect";
+import { Cause, Clock, Duration, Effect, Layer, Predicate, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { RpcClient, RpcSerialization } from "effect/rpc";
 import { RpcClientError } from "effect/rpc/RpcClientError";
@@ -10,12 +10,16 @@ function makeDaemonClient() {
 type DaemonClient = Effect.Success<ReturnType<typeof makeDaemonClient>>;
 
 const FLEET_STOPPED = "Fleet isn't running, so agent work and its health are unknown.";
+// A busy Fleet took up to 15 seconds for one read in measurement.
+const FLEET_WAIT_SECONDS = 20;
 
 // npx runs the project's own @shivaedev/work-fleet, because the bare work-fleet command is rarely on PATH.
 export function daemonUnavailable(error: unknown, port: number, folder: string): { readonly reason: string; readonly startCommand?: string } {
-	const stopped = error instanceof RpcClientError && error.reason._tag === "HttpError" && error.reason.kind === "TransportError";
-	return stopped
-		? { reason: FLEET_STOPPED, startCommand: `npx @shivaedev/work-fleet serve ${shellWord(folder)} --port ${port}` }
+	if (error instanceof RpcClientError && error.reason._tag === "HttpError" && error.reason.kind === "TransportError") {
+		return { reason: FLEET_STOPPED, startCommand: `npx @shivaedev/work-fleet serve ${shellWord(folder)} --port ${port}` };
+	}
+	return Cause.isTimeoutError(error)
+		? { reason: `Fleet on port ${port} didn't answer within ${FLEET_WAIT_SECONDS} seconds, so agent work and its health are unknown.` }
 		: { reason: `Fleet on port ${port} didn't answer as expected, so agent work and its health are unknown.` };
 }
 
@@ -23,7 +27,7 @@ function shellWord(value: string) {
 	return /^[\w./@%+=:,-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-export function readDaemon<A, E>(port: number, read: (client: DaemonClient) => Effect.Effect<A, E>) {
+export function readDaemon<A, E>(port: number, read: (client: DaemonClient) => Effect.Effect<A, E>, wait = Duration.seconds(FLEET_WAIT_SECONDS)) {
 	return Effect.scoped(
 		Effect.gen(function* () {
 			const client = yield* makeDaemonClient();
@@ -34,7 +38,7 @@ export function readDaemon<A, E>(port: number, read: (client: DaemonClient) => E
 					Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]),
 				),
 			),
-			Effect.timeout("5 seconds"),
+			Effect.timeout(wait),
 		),
 	);
 }

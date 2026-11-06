@@ -4,9 +4,6 @@ import type { WorkboardArea, WorkboardAreaTask, WorkboardBlock } from "#types/in
 
 function stateOf(area: WorkboardArea) {
 	const count = area.queue.length;
-	if (area.holders.length === 0 && count === 0) {
-		return { color: "#16853f", label: "free" };
-	}
 	return { color: count >= 5 ? "#d74253" : "#ad7400", label: `${area.holders.length > 0 ? "held" : "unheld"} · ${count} queued` };
 }
 
@@ -16,13 +13,7 @@ export function areaView(t: Table, areas: WorkboardBlock<WorkboardArea>, view: P
 	return (
 		<Box flexDirection="column" gap={1}>
 			<Text weight="semibold">Areas</Text>
-			{areas.problem === null ? (
-				<Box columnGap={2} flexDirection="row" flexWrap="wrap" gap={1}>
-					{areas.items.map((area) => areaChip(t, area, view.onToggleArea))}
-				</Box>
-			) : (
-				<Text dimColor>{areas.problem}</Text>
-			)}
+			{areas.problem === null ? areaChips(t, areas.items, view.onToggleArea) : <Text dimColor>{areas.problem}</Text>}
 			{areas.problem === null && selected !== undefined ? (
 				<Box flexDirection="column">
 					<Text weight="semibold">{selected.area}</Text>
@@ -34,6 +25,18 @@ export function areaView(t: Table, areas: WorkboardBlock<WorkboardArea>, view: P
 					)}
 				</Box>
 			) : null}
+		</Box>
+	);
+}
+
+function areaChips(t: Table, areas: WorkboardArea[], onToggle: (area: string) => void) {
+	const { Box, Text } = t;
+	if (areas.length === 0) {
+		return <Text dimColor>No area is held or queued.</Text>;
+	}
+	return (
+		<Box columnGap={2} flexDirection="row" flexWrap="wrap" gap={1}>
+			{areas.map((area) => areaChip(t, area, onToggle))}
 		</Box>
 	);
 }

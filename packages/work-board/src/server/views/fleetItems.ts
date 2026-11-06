@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { Effect } from "effect";
+import { Clock, Duration, Effect } from "effect";
 import { waitsOnYou } from "#browser/document/asks.ts";
 import type { AuthoredProgress, FleetItemsProjection } from "#browser/views/FleetItemsProjection.ts";
 import { laneOf } from "#browser/views/now.ts";
@@ -39,11 +39,15 @@ const fleetItemsUnavailable = Effect.fn("WorkBoard.fleetItemsUnavailable")(funct
 	return projection;
 });
 
+// Both Fleet reads share one budget, so the Board answers inside the 30 seconds Claude Code's plugin fetch waits.
+const FLEET_VIEW_MS = 25_000;
+
 export function fleetItems(folder: string, fleetPort: number | null = DAEMON_PORT): Effect.Effect<FleetItemsProjection, never, Workspace> {
 	if (fleetPort === null) {
 		return fleetItemsUnavailable({ reason: "Fleet isn't set up for this Board." });
 	}
 	return Effect.gen(function* () {
+		const started = yield* Clock.currentTimeMillis;
 		const result = yield* readDaemon(fleetPort, (client) => client("daemon.fleetItems", {})).pipe(Effect.result);
 		const workspace = yield* Workspace;
 		if (result._tag === "Failure") {
@@ -65,9 +69,10 @@ export function fleetItems(folder: string, fleetPort: number | null = DAEMON_POR
 				? [{ sourcePath: join(settings.realRoot, document.file), workId }]
 				: [];
 		});
+		const left = Duration.millis(Math.max(0, FLEET_VIEW_MS - ((yield* Clock.currentTimeMillis) - started)));
 		// One request covers the whole view: a request per brief kept views with many Fleet items waiting past client timeouts.
 		const checked = yield* (
-			briefs.length === 0 ? Effect.succeed([]) : readDaemon(fleetPort, (client) => client("daemon.briefProblems", { briefs }))
+			briefs.length === 0 ? Effect.succeed([]) : readDaemon(fleetPort, (client) => client("daemon.briefProblems", { briefs }), left)
 		).pipe(Effect.result);
 		if (checked._tag === "Failure") {
 			return yield* fleetItemsUnavailable({ reason: "Fleet brief validation is unavailable; these briefs have not been checked." });

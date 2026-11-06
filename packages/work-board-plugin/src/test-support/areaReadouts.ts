@@ -2,6 +2,12 @@ import { Effect } from "effect";
 
 export function areaReadouts(container: Element, tell: (text: string) => void) {
 	return {
+		areaChips: () =>
+			Effect.sync(() => {
+				tell("read the area chips in the order the pane shows them");
+				const heading = [...container.querySelectorAll("span")].find((span) => span.textContent === "Areas");
+				return [...(heading?.parentElement?.children[1]?.querySelectorAll("button") ?? [])].map((button) => button.textContent);
+			}),
 		areaDetails: () =>
 			Effect.sync(() => {
 				tell("read the open area's holder and ordered queue");

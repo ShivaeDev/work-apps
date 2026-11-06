@@ -16,6 +16,15 @@ export function waitingLine(state: Exclude<WorkboardBoard, { kind: "ready" }>): 
 	return "Loading the Work Board…";
 }
 
+// The host aborts $.http.fetch after a fixed wait and says so in its error; any other failure means nothing answered on the socket.
+export function unansweredLine(directory: string, cause: unknown): string {
+	const message = cause instanceof Error ? cause.message : String(cause);
+	const waited = /no complete answer within (?<ms>\d+)ms/u.exec(message)?.groups?.ms;
+	return waited === undefined
+		? waitingLine({ directory, kind: "down" })
+		: `The Work Board for ${directory} is busy: it took longer than ${Math.round(Number(waited) / 1000)} seconds to answer. The pane asks again on its next refresh.`;
+}
+
 export function refusedLine(response: RpcReply, directory: string): string {
 	return `The Work Board for ${directory} refused the request (${response.status}): ${response.text.trim()}`;
 }

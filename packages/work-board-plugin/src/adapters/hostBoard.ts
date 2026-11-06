@@ -2,7 +2,7 @@ import type { EngineInterface, HttpResponse } from "claude-code";
 import { platformClient } from "#adapters/platformClient.ts";
 import type { Board } from "#boardTools.ts";
 import { findBoard } from "#findBoard.ts";
-import { refusedLine, waitingLine } from "#lines.ts";
+import { refusedLine, unansweredLine, waitingLine } from "#lines.ts";
 import { RPC_URL, rpcPost } from "#rpc.ts";
 
 type Client = ReturnType<typeof platformClient>;
@@ -12,7 +12,7 @@ async function post($: EngineInterface, directory: string, body: string): Promis
 	try {
 		response = await $.http.fetch(RPC_URL, rpcPost(directory, body));
 	} catch (cause) {
-		throw new Error(waitingLine({ directory, kind: "down" }), { cause });
+		throw new Error(unansweredLine(directory, cause), { cause });
 	}
 	if (!response.ok) {
 		throw new Error(refusedLine(response, directory));

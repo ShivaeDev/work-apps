@@ -3,7 +3,7 @@ import { areaLanesProject } from "#test/areaLanesProject.ts";
 import { host } from "#test/hostStory.ts";
 import { refusal } from "#test/refusal.ts";
 
-host.it("Fleet items show package holders and eligible priority queues with the scheduler's waiting reasons", [areaLanesProject], function* (daemon) {
+host.it("Fleet items list only busy areas with holders and eligible priority queues and waiting reasons", [areaLanesProject], function* (daemon) {
 	yield* daemon.approve("holder");
 	yield* daemon.admit();
 
@@ -12,13 +12,13 @@ host.it("Fleet items show package holders and eligible priority queues with the 
 	const areas = (yield* daemon.fleetItems()).areas ?? [];
 	expect({
 		blockers: { first: (yield* daemon.storedRecord("first")).value.blocker, urgent: (yield* daemon.storedRecord("urgent")).value.blocker },
-		free: areas.find(({ area }) => area === "free"),
+		names: areas.map(({ area }) => area),
 		refused,
 		workBoard: areas.find(({ area }) => area === "work-board"),
 		workFleet: areas.find(({ area }) => area === "work-fleet"),
 	}).toEqual({
 		blockers: { first: "waiting for area work-fleet held by holder", urgent: "waiting for area work-fleet/host held by holder" },
-		free: { area: "free", holders: [], queue: [] },
+		names: ["work-board", "work-fleet", "work-fleet/host"],
 		refused: {
 			first: "admission refused: waiting for area work-fleet held by holder",
 			urgent: "admission refused: waiting for area work-fleet/host held by holder",
