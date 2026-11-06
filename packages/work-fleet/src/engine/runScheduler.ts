@@ -29,7 +29,13 @@ export const startScheduler = Effect.fn("Fleet.startScheduler")(function* <R = n
 			}),
 		key: ({ value }) => value.workId,
 		keys,
-		read: fleet.list().pipe(Effect.map((rows) => activeRecords(rows).filter(({ value }) => !openSweep(value)))),
+		read: fleet
+			.list()
+			.pipe(
+				Effect.flatMap((rows) =>
+					fleet.settledCompletions(rows).pipe(Effect.map((settled) => activeRecords(rows, settled).filter(({ value }) => !openSweep(value)))),
+				),
+			),
 	});
 	const admission = yield* reconcile({
 		act: () =>

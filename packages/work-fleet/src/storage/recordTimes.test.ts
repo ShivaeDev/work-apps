@@ -39,6 +39,22 @@ timedStorage.it("an edit of finished work keeps its completion and step entry ti
 });
 
 timedStorage.it(
+	"recording the Board revision finished work settled on keeps its update time",
+	[],
+	function* ({ now, openFleetStorage, secondPasses }) {
+		const store = yield* openFleetStorage({ namespace: STORAGE_NAMESPACE });
+		const start = yield* now();
+		const queued = yield* store.insert(itemRecord("queued"));
+		const done = yield* store.replace(queued.value.workId, queued.version, { ...queued.value, step: "done" });
+		yield* secondPasses();
+
+		const settled = yield* store.replace(done.value.workId, done.version, { ...done.value, boardSettledRevision: "settled-revision" });
+
+		expect(settled.value).toMatchObject({ boardSettledRevision: "settled-revision", completedAt: start, updatedAt: start });
+	},
+);
+
+timedStorage.it(
 	"requeueing finished work after a restart enters the queue now and clears its completion time",
 	[],
 	function* ({ now, openFleetStorage, secondPasses }) {

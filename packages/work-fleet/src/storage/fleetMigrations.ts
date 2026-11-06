@@ -3,6 +3,7 @@ import { Migrator, SqlClient } from "effect/sql";
 import { addShapeColumns } from "#storage/addShapeColumns.ts";
 import { advisoryReviews } from "#storage/advisoryReviews.ts";
 import { backfillDecisionCodes } from "#storage/backfillDecisionCodes.ts";
+import { boardSettledRevisions } from "#storage/boardSettledRevisions.ts";
 import { ciHolds } from "#storage/ciHolds.ts";
 import { mergedDeliveries } from "#storage/mergedDeliveries.ts";
 import { modelTables } from "#storage/modelTables.ts";
@@ -142,5 +143,6 @@ export const fleetMigrations = Effect.fn("FleetStore.fleetMigrations")(function*
 				"attentionOwner" = coalesce("decision__attentionOwner", 'orchestrator'), version = version + 1
 			where step = 'reviewing' and "decision__code" = 'pr-conflicting'`,
 		"37_ci_holds": ciHolds(namespace),
+		"38_board_settled_revision": boardSettledRevisions(namespace),
 	});
 });

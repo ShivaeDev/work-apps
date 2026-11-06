@@ -41,7 +41,7 @@ export const dispatchRecords = Effect.fn("Fleet.dispatchRecords")(function* (rec
 	return dispatched;
 });
 
-export function activeRecords(records: readonly Versioned<FleetRecord>[]) {
+export function activeRecords(records: readonly Versioned<FleetRecord>[], settled: ReadonlySet<string> = new Set()) {
 	return records
 		.filter(
 			({ value }) =>
@@ -49,7 +49,7 @@ export function activeRecords(records: readonly Versioned<FleetRecord>[]) {
 				|| !["done", "released", "queued"].includes(value.step)
 				|| needsReleasedDelivery(value)
 				|| needsReleasedSettlement(value)
-				|| boardCompletionAction(value) !== undefined
+				|| (boardCompletionAction(value) !== undefined && !settled.has(value.workId))
 				|| pendingAcknowledgements(value).length > 0
 				|| pendingSessionCleanup(value).length > 0,
 		)

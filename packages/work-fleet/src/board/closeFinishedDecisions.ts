@@ -4,7 +4,7 @@ import { managedRequestReceipt } from "@shivaedev/work-board/server/attention/ma
 import type { Snapshot as BoardSnapshot } from "@shivaedev/work-board/server/search/snapshot.ts";
 import { closePublishedDecision, publishedDecision } from "#board/closePublishedDecision.ts";
 import type { ClosedDecision } from "#board/schema.ts";
-import { snapshotProblems } from "#board/workPolicy.ts";
+import { type PublishedDecisionDocument, type WorkIndex, workIndex } from "#board/workIndex.ts";
 import type { BoardFailure } from "#policy.ts";
 
 // Each closure syncs its file and directory, so a sweep in sequence waits on every sync in turn.
@@ -19,16 +19,17 @@ export interface CloseFinishedOptions {
 export function closeFinishedDecisions(realRoot: string, snapshot: Effect.Effect<BoardSnapshot, BoardFailure>) {
 	return Effect.fn("FleetBoard.closeFinishedDecisions")(function* (options: CloseFinishedOptions = {}) {
 		const current = yield* snapshot;
-		const questions = new Map(
-			current.documents.flatMap(({ parsed }) =>
-				parsed.fields.question && parsed.fields.id ? [[parsed.fields.id, parsed.fields.question.source] as const] : [],
-			),
-		);
-		const answered = new Set(
-			current.documents.flatMap(({ parsed }) => (parsed.fields.response?.type === "answer" ? [questions.get(parsed.fields.response.question)] : [])),
-		);
-		const candidates = current.documents.flatMap((document) => {
-			const candidate = finishedDecision(current, document, options, answered);
+		const index = workIndex(current);
+		const published =
+			options.workId === undefined
+				? current.documents.flatMap((document) => {
+						const decision = publishedDecision(document);
+						return decision === undefined ? [] : [{ decision, document }];
+					})
+				: index.decisions(options.workId);
+		const answered = options.workId === undefined ? answeredQuestions(current) : new Set<string | undefined>();
+		const candidates = published.flatMap(({ decision, document }) => {
+			const candidate = finishedDecision(current, index, decision, document, options, answered);
 			return candidate === undefined ? [] : [{ decision: { ...candidate, sourcePath: document.file } satisfies ClosedDecision, document }];
 		});
 		if (options.dryRun) {
@@ -44,19 +45,26 @@ export function closeFinishedDecisions(realRoot: string, snapshot: Effect.Effect
 	});
 }
 
+function answeredQuestions(snapshot: BoardSnapshot) {
+	const questions = new Map(
+		snapshot.documents.flatMap(({ parsed }) =>
+			parsed.fields.question && parsed.fields.id ? [[parsed.fields.id, parsed.fields.question.source] as const] : [],
+		),
+	);
+	return new Set(
+		snapshot.documents.flatMap(({ parsed }) => (parsed.fields.response?.type === "answer" ? [questions.get(parsed.fields.response.question)] : [])),
+	);
+}
+
 function finishedDecision(
 	snapshot: BoardSnapshot,
+	index: WorkIndex,
+	decision: PublishedDecisionDocument["decision"],
 	document: BoardDocument,
 	options: CloseFinishedOptions,
 	answered: ReadonlySet<string | undefined>,
 ) {
-	const decision = publishedDecision(document);
-	if (
-		decision === undefined
-		|| decision.request.state !== "open"
-		|| snapshotProblems(snapshot).has(document.file)
-		|| (options.workId !== undefined && decision.workId !== options.workId)
-	) {
+	if (decision.request.state !== "open" || index.problems.has(document.file)) {
 		return;
 	}
 	const receipt = managedRequestReceipt(document, decision.request, snapshot.model);
@@ -73,7 +81,7 @@ function finishedDecision(
 	const matches = snapshot.model.ids.get(decision.workId);
 	const work = matches?.length === 1 ? matches[0] : undefined;
 	const status = work?.parsed.fields.status;
-	if (work === undefined || snapshotProblems(snapshot).has(work.file) || !["done", "deferred", "dropped"].includes(status ?? "")) {
+	if (work === undefined || index.problems.has(work.file) || !["done", "deferred", "dropped"].includes(status ?? "")) {
 		return;
 	}
 	return { reason: `Closed because Board work ${decision.workId} is ${status}.`, workId: decision.workId };

@@ -25,4 +25,5 @@ export interface BoardGatewayService {
 		text?: string,
 	) => Effect.Effect<string, BoardFailure>;
 	readonly sourceCreatedAt?: (sourcePath: string) => Effect.Effect<number | undefined, BoardFailure>;
+	readonly workRevisions?: () => Effect.Effect<(workId: string) => string | undefined, BoardFailure>;
 }
