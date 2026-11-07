@@ -227,15 +227,5 @@ export function workspaceBoardVerbs(engine: BoardEngine, tell: (line: string) =>
 					return { goals: navigation.counts.goals, inbox: navigation.inboxCount ?? "unknown" };
 				},
 			),
-		overviewFleet: () =>
-			Effect.map(
-				rpc((client) => client("work-board.overview", undefined)),
-				({ fleet }) => {
-					tell("the reader checks the Fleet work the overview shows");
-					return fleet.state === "ready"
-						? { completed: fleet.completed.map((item) => item.workId), shown: fleet.items.map((item) => item.workId) }
-						: fleet.state;
-				},
-			),
 	};
 }

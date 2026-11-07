@@ -20,7 +20,7 @@ The plugin needs a running Work Board. It finds one by walking up from the sessi
 npx @shivaedev/work-board .work
 ```
 
-Without a `.work` folder, the pane and every tool say the session's folder has no Work Board and how to start one; with a Board that is not running, they say so and name the start command. Claude Code waits 30 seconds for each Board answer; a Board still working after that is reported as busy, not stopped, and the next refresh asks again. The band stays hidden until the Board answers. Pressing a Needs you item opens it with `open -g` at the URL the Board says it is served on, so opening items works on macOS.
+Without a `.work` folder, the pane and every tool say the session's folder has no Work Board and how to start one; with a Board that is not running, they say so and name the start command. Claude Code waits 30 seconds for each Board answer; a Board still working after that is reported as busy, not stopped, and the next refresh asks again. Claude Code also reads at most 4 MiB of each answer; an answer cut off there is reported as broken off at that limit, not as no answer. The band stays hidden until the Board answers. Pressing a Needs you item opens it with `open -g` at the URL the Board says it is served on, so opening items works on macOS.
 
 The plugin only reads the Board. Answer decisions in the Board itself or through [`@shivaedev/work-board`](../work-board/README.md).
 
