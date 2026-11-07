@@ -6,7 +6,7 @@ import { laneOf } from "#browser/views/now.ts";
 import { DAEMON_PORT } from "#diagnostics/daemonContract.ts";
 import { inboxItems } from "#server/attention/inbox.ts";
 import { requestInbox } from "#server/attention/requestInbox.ts";
-import { daemonUnavailable, readDaemon } from "#server/diagnostics/daemon.ts";
+import { daemonUnavailable, FLEET_VIEW_MS, readDaemon } from "#server/diagnostics/daemon.ts";
 import { fleetChecksBrief } from "#server/document/briefDiagnostic.ts";
 import { itemRequests } from "#server/document/requests.ts";
 import type { Snapshot } from "#server/search/snapshot.ts";
@@ -38,9 +38,6 @@ const fleetItemsUnavailable = Effect.fn("WorkBoard.fleetItemsUnavailable")(funct
 			: { ...unavailable, state: "unavailable" };
 	return projection;
 });
-
-// Both Fleet reads share one budget, so the Board answers inside the 30 seconds Claude Code's plugin fetch waits.
-const FLEET_VIEW_MS = 25_000;
 
 export function fleetItems(folder: string, fleetPort: number | null = DAEMON_PORT): Effect.Effect<FleetItemsProjection, never, Workspace> {
 	if (fleetPort === null) {

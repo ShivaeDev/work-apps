@@ -567,7 +567,9 @@ claude mcp add --transport stdio work-board -- work-board mcp /absolute/path/to/
 codex mcp add work-board -- work-board mcp /absolute/path/to/notes
 ```
 
-Both commands require `work-board` on the client's PATH. `work-board mcp <dir>` reads the running board through `<dir>/board.sock`; it uses the same computed queries as the browser. If no board answers, every tool returns one error naming the directory and the `work-board <dir>` command to start it.
+Both commands require `work-board` on the client's PATH. Without a global install, register `pnpm dlx @shivaedev/work-board mcp /absolute/path/to/notes`. Avoid `npx -y @shivaedev/work-board`: npm keeps its first install of the package, refuses to update that copy once a release pins another Effect version, and the server exits before the client connects.
+
+`work-board mcp <dir>` reads the running board through `<dir>/board.sock`; it uses the same computed queries as the browser. The server starts and lists its tools whether or not a board runs, and each tool call reads the board when it runs, so a board that starts later answers the next call. A call waits for a busy board while its Fleet view finishes. If no board answers, the tool returns one error naming the directory and the `work-board <dir>` command to start it.
 
 | Tool                                   | Returns                                                                                                                                                                              |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

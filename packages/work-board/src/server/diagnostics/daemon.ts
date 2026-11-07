@@ -10,8 +10,10 @@ function makeDaemonClient() {
 type DaemonClient = Effect.Success<ReturnType<typeof makeDaemonClient>>;
 
 const FLEET_STOPPED = "Fleet isn't running, so agent work and its health are unknown.";
-// A busy Fleet took up to 15 seconds for one read in measurement.
+// A busy Fleet took up to 15 seconds for one read in measurement. Both reads of the Fleet view share one budget,
+// so the Board answers inside the 30 seconds Claude Code's plugin fetch waits.
 const FLEET_WAIT_SECONDS = 20;
+export const FLEET_VIEW_MS = 25_000;
 
 // npx runs the project's own @shivaedev/work-fleet, because the bare work-fleet command is rarely on PATH.
 export function daemonUnavailable(error: unknown, port: number, folder: string): { readonly reason: string; readonly startCommand?: string } {
