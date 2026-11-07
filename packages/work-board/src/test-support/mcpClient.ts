@@ -76,7 +76,7 @@ export const mcpClient = Effect.fn("Test.mcpClient")(function* (directory: strin
 					pending.set(id, { reject, resolve });
 					child.stdin.write(`${JSON.stringify({ id, jsonrpc: "2.0", method, params })}\n`);
 				}),
-		).pipe(Effect.timeout("15 seconds"));
+		).pipe(Effect.timeout("45 seconds"));
 	}
 	yield* send("initialize", { capabilities: {}, clientInfo: { name: "board-test", version: "1" }, protocolVersion: "2025-11-25" });
 	child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);

@@ -22,7 +22,7 @@ const withFleet = [
 	})),
 ];
 const unavailable = { reason: "Fleet isn't set up for this Board.", state: "unavailable" };
-const NO_BOARD = "error: No board answers in the project folder. Start one with: work-board 'the project folder'";
+const NO_BOARD = "error: The Work Board in the project folder is not reachable. Start it with: work-board 'the project folder'";
 
 boardStory.it("an agent connecting over MCP stdio finds three read-only tools", withFleet, function* ({ agentTools }) {
 	expect(yield* agentTools()).toEqual([
@@ -31,6 +31,18 @@ boardStory.it("an agent connecting over MCP stdio finds three read-only tools", 
 		{ name: "needs_you", readOnly: true },
 	]);
 });
+
+boardStory.it(
+	"with no board running, an agent connecting over MCP stdio still finds the three tools",
+	[project, deferredServing],
+	function* ({ agentTools }) {
+		expect(yield* agentTools()).toEqual([
+			{ name: "board_overview", readOnly: true },
+			{ name: "item", readOnly: true },
+			{ name: "needs_you", readOnly: true },
+		]);
+	},
+);
 
 boardStory.it(
 	"board_overview reports the Fleet items, the goal counts and the Needs-you list the browser computes",
@@ -86,13 +98,25 @@ for (const [tool, args] of [
 	["item", { id: "task.first" }],
 ] as const) {
 	boardStory.it(
-		`with no board running, ${tool} answers one error that says how to start the board`,
+		`with no board running, ${tool} answers that the board is not reachable and how to start it`,
 		[project, deferredServing],
 		function* ({ agentReads }) {
 			expect(yield* agentReads(tool, args)).toBe(NO_BOARD);
 		},
 	);
 }
+
+boardStory.it(
+	"an agent that connected before the board started reads the board once it starts",
+	[project, deferredServing],
+	function* ({ agentReads, boardStarts }) {
+		expect(yield* agentReads("board_overview")).toBe(NO_BOARD);
+
+		yield* boardStarts();
+
+		expect(yield* agentReads("board_overview")).toEqual(expect.objectContaining({ fleet: expect.objectContaining(unavailable) }));
+	},
+);
 
 boardStory.it(
 	"without Fleet, board_overview and item say Fleet isn't set up instead of failing",
@@ -147,7 +171,7 @@ boardStory.it("item answers an error that names a missing item", [project, board
 });
 
 boardStory.it(
-	"after the board stops, an agent's next read says no board answers",
+	"after the board stops, an agent's next read says the board is not reachable",
 	[project, boardWithoutFleet],
 	function* ({ agentReads, boardStops }) {
 		expect(yield* agentReads("board_overview")).toEqual(expect.objectContaining({ fleet: expect.objectContaining(unavailable) }));
