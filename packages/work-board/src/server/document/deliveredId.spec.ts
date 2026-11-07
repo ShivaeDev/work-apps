@@ -40,7 +40,7 @@ const SHOWN = Array.from({ length: 30 }, (_, index) => `fleet.shown-${index}`);
 const fleetItem = { attentionOwner: "automation" as const, stage: "working" as const, stageEnteredAt: 100, updatedAt: 200 };
 
 boardStory.it(
-	"the overview checks all thirty shown briefs with Fleet in one request and hides the one Fleet refuses",
+	"the Fleet work view checks all thirty shown briefs with Fleet in one request and hides the one Fleet refuses",
 	[
 		projectFiles({
 			...Object.fromEntries(SHOWN.map((id, index) => [`tasks/${index}.md`, `---\nid: ${id}\nkind: task\nstatus: ready\n---\n# Shown ${index}\n`])),
@@ -54,10 +54,18 @@ boardStory.it(
 			},
 		),
 	],
-	function* ({ fleetBriefRequests, overviewFleet }) {
-		const overview = yield* overviewFleet();
-
-		expect(overview).toEqual({ completed: ["fleet.delivered"], shown: SHOWN.slice(1) });
-		expect(yield* fleetBriefRequests()).toEqual([SHOWN.map((id, index) => `${id} at tasks/${index}.md`)]);
+	function* ({ fleetBriefRequests, fleetWork }) {
+		yield* outcomes([
+			[
+				"Fleet work",
+				() => fleetWork(),
+				expect.objectContaining({
+					completed: [expect.objectContaining({ workId: "fleet.delivered" })],
+					items: SHOWN.slice(1).map((workId) => expect.objectContaining({ workId })),
+					state: "ready",
+				}),
+			],
+			["briefs asked about", () => fleetBriefRequests(), [SHOWN.map((id, index) => `${id} at tasks/${index}.md`)]],
+		]);
 	},
 );

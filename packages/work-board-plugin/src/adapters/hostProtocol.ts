@@ -26,6 +26,11 @@ const exchange = Effect.fn("WorkboardPlugin.exchange")(function* (
 		catch: (cause) => defect(cause instanceof Error ? cause.message : String(cause), cause),
 		try: () => post(body),
 	});
+	if (text !== "" && !text.endsWith("\n")) {
+		return yield* defect(
+			`The Work Board's answer to ${request.tag} breaks off mid-message after ${text.length} characters. Claude Code reads at most 4 MiB of an answer.`,
+		);
+	}
 	const responses = yield* Effect.try({
 		catch: (cause) => defect("The Work Board answered with an unreadable RPC stream.", cause),
 		try: () => parser.decode(text).filter(isServerMessage),
