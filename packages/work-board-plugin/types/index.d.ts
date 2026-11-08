@@ -9,22 +9,11 @@ export interface WorkboardGoalRef {
 	title: string;
 }
 
-export interface WorkboardAgent {
-	id: string;
-	role: string;
-	state: string;
-	turnMs: number | null;
-}
-
-export interface WorkboardFlight {
-	agents: WorkboardAgent[];
-	attentionOwner?: string | undefined;
+export interface WorkboardTask {
 	goal: WorkboardGoalRef | null;
-	prUrl: string | null;
-	stage: string;
+	id: string;
+	owner: string | null;
 	title: string;
-	waitingReason?: string | undefined;
-	workId: string;
 }
 
 export interface WorkboardGoal {
@@ -45,30 +34,17 @@ export interface WorkboardBlock<T> {
 	problem: string | null;
 }
 
-export interface WorkboardAreaTask {
-	prUrl: string | null;
-	stage: string;
-	title: string;
-	workId: string;
-}
-
-export interface WorkboardArea {
-	area: string;
-	holders: WorkboardAreaTask[];
-	queue: WorkboardAreaTask[];
-}
-
 export type WorkboardBoard =
 	| { kind: "loading" }
 	| { cwd: string; kind: "none" }
 	| { directory: string; kind: "down" }
 	| { kind: "error"; message: string }
 	| {
-			areas: WorkboardBlock<WorkboardArea>;
 			asks: WorkboardBlock<WorkboardAsk>;
-			flights: WorkboardBlock<WorkboardFlight>;
 			goals: WorkboardBlock<WorkboardGoal>;
 			kind: "ready";
+			ready: WorkboardBlock<WorkboardTask>;
+			working: WorkboardBlock<WorkboardTask>;
 	  };
 
 declare module "claude-code" {
@@ -76,7 +52,6 @@ declare module "claude-code" {
 		workboard: {
 			achievedOpen: boolean;
 			board: Shaped<WorkboardBoard>;
-			openArea: string | null;
 			seenAsks: readonly string[] | null;
 			updatedAt: number | null;
 		};

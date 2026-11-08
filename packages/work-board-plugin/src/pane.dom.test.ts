@@ -1,12 +1,15 @@
 import { expect } from "vitest";
 import { outcomes } from "@shivaedev/test-story/server/outcomes.ts";
-import { buildThePane, finishedTurnDaysAgo, queuedForSlot, waitingOnArea, waitingOnDependency } from "#test/admissionItems.ts";
-import { achievedOpen, goalAnswer, goalsAnswered, onTerminal, pluginPane, workAnswered } from "#test/pluginPane.ts";
+import { achievedOpen, boardWithoutTaskLists, goalAnswer, goalsAnswered, onTerminal, pluginPane, tasksAnswered } from "#test/pluginPane.ts";
 
 const shipTheBoard = goalAnswer("Ship the Board", { blocked: 3, done: 1, parked: 5, running: 2, scheduled: 4 });
 const completeTasks = goalAnswer("Complete tasks", { done: 2 });
 const achievedGoal = goalAnswer("Achieved goal", { done: 2 }, { achieved: true });
 const anotherAchievedGoal = goalAnswer("Another achieved goal", { done: 2 }, { achieved: true });
+const buildThePane = { file: "build.md", goal: shipTheBoard.id, id: "task.build", owner: "claude", title: "Build the pane" };
+const wireTheTools = { file: "wire.md", goal: shipTheBoard.id, id: "task.wire", title: "Wire the tools" };
+const drawTheBand = { file: "band.md", goal: shipTheBoard.id, id: "task.band", title: "Draw the band" };
+const looseEnd = { file: "loose.md", id: "task.loose", title: "Tidy a loose end" };
 
 pluginPane.it(
 	"the goal legend names Done, Running, Blocked, Scheduled and Parked, each in its color",
@@ -56,34 +59,47 @@ pluginPane.it(
 );
 
 pluginPane.it(
-	"In flight lists Build the pane, the one started task, and none of the work waiting on a dependency, an area or a slot",
-	[workAnswered(buildThePane, waitingOnDependency, waitingOnArea, queuedForSlot)],
-	function* ({ inFlight }) {
-		expect(yield* inFlight()).toEqual([{ goal: "Other", work: ["Build the pane"] }]);
+	"In progress shows Build the pane under its goal Ship the Board, with its owner claude",
+	[goalsAnswered(shipTheBoard), tasksAnswered("working", buildThePane)],
+	function* ({ inProgress }) {
+		expect(yield* inProgress()).toEqual([{ goal: "Ship the Board", tasks: ["Build the pane · claude"] }]);
 	},
 );
 
 pluginPane.it(
-	"Build the pane shows its worker coding for 2m and its reviewer not started yet, with no time",
-	[workAnswered(buildThePane)],
-	function* ({ agentsOf }) {
-		expect(yield* agentsOf("Build the pane")).toEqual(["worker · coding · 2m", "reviewer · not started yet"]);
+	"Ready to start groups tasks by goal, largest group first, and lists a task with no goal under Other last",
+	[goalsAnswered(shipTheBoard), tasksAnswered("ready", looseEnd, wireTheTools, drawTheBand)],
+	function* ({ readyToStart }) {
+		expect(yield* readyToStart()).toEqual([
+			{ goal: "Ship the Board", tasks: ["Wire the tools", "Draw the band"] },
+			{ goal: "Other", tasks: ["Tidy a loose end"] },
+		]);
+	},
+);
+
+pluginPane.it("with no task working or ready, both sections say so", [goalsAnswered(shipTheBoard)], function* ({ inProgress, readyToStart }) {
+	yield* outcomes([
+		["In progress", () => inProgress(), "Nothing in progress."],
+		["Ready to start", () => readyToStart(), "Nothing is ready to start."],
+	]);
+});
+
+pluginPane.it(
+	"a Board that sends no task lists leaves both sections unknown and says to update it",
+	[boardWithoutTaskLists],
+	function* ({ band, readyToStart }) {
+		yield* outcomes([
+			["Ready to start", () => readyToStart(), "This Board does not list tasks to start; update it."],
+			["band", () => band(), "Needs you 0 · In progress ? · Ready ? · Goals 0/0"],
+		]);
 	},
 );
 
 pluginPane.it(
-	"a worker turn that finished three days ago shows its own 1m, not the days since it started",
-	[workAnswered(finishedTurnDaysAgo)],
-	function* ({ agentsOf }) {
-		expect(yield* agentsOf("Build the pane")).toEqual(["worker · waiting for CI · 1m"]);
-	},
-);
-
-pluginPane.it(
-	"the band counts no decisions, the one started task of four and 1 of Ship the Board's 15 tasks done",
-	[workAnswered(buildThePane, waitingOnDependency, waitingOnArea, queuedForSlot), goalsAnswered(shipTheBoard)],
+	"the band counts no decisions, one task in progress, two ready and 1 of Ship the Board's 15 tasks done",
+	[goalsAnswered(shipTheBoard), tasksAnswered("working", buildThePane), tasksAnswered("ready", wireTheTools, drawTheBand)],
 	function* ({ band }) {
-		expect(yield* band()).toBe("Needs you 0 · In flight 1 · Goals 1/15");
+		expect(yield* band()).toBe("Needs you 0 · In progress 1 · Ready 2 · Goals 1/15");
 	},
 );
 

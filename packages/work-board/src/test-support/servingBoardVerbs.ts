@@ -157,17 +157,9 @@ export function servingBoardVerbs(engine: BoardEngine, tell: (line: string) => v
 			tell(`a browser downloads the first HTML of ${path}`);
 			return Effect.map(rawGet(served(engine).board, path), (response) => ({ status: statusPhrase(response.status), ...shellOf(response.body) }));
 		},
-		pluginAgentStates: (at: number) => {
-			tell("the Claude Code plugin reads the board's work in flight");
-			return Effect.map(pluginBoard(at), (board) => board.flights.items.map((flight) => flight.agents.map((agent) => agent.state)));
-		},
-		pluginAgents: (at: number) => {
-			tell("the Claude Code plugin reads the agents on the board's work in flight");
-			return Effect.map(pluginBoard(at), (board) => board.flights.items.map((flight) => flight.agents));
-		},
-		pluginGoal: (id: string, at: number) => {
+		pluginGoal: (id: string) => {
 			tell(`the Claude Code plugin reads the progress of ${id}`);
-			return Effect.map(pluginBoard(at), (board) => board.goals.items.find((goal) => goal.id === id) ?? "missing");
+			return Effect.map(pluginBoard(), (board) => board.goals.items.find((goal) => goal.id === id) ?? "missing");
 		},
 		pluginItem: (id: string) => {
 			tell(`the Claude Code plugin's item tool reads ${id}`);
@@ -181,9 +173,9 @@ export function servingBoardVerbs(engine: BoardEngine, tell: (line: string) => v
 			tell("the Claude Code plugin's overview tool reads the board");
 			return Effect.promise(() => overview(pluginTools()));
 		},
-		pluginSection: (section: "areas" | "asks" | "flights" | "goals", at: number) => {
+		pluginSection: (section: "asks" | "goals" | "ready" | "working") => {
 			tell(`the Claude Code plugin reads the board's ${section}`);
-			return Effect.map(pluginBoard(at), (board) => board[section]);
+			return Effect.map(pluginBoard(), (board) => board[section]);
 		},
 		queryRpc: (path: string, headers: Readonly<Record<string, string>> = {}) => {
 			tell(`a local client asks ${path} for the start view's data`);

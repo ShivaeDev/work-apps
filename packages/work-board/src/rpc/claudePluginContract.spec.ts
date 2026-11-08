@@ -2,108 +2,48 @@ import { expect } from "vitest";
 import { outcomes } from "@shivaedev/test-story/server/outcomes.ts";
 import { boardStory, projectFiles } from "#test/boardStory.ts";
 import { goalProgressFixture, progressFleet } from "#test/goalProgressFixture.ts";
+import { launchFiles } from "#test/launchFiles.ts";
 import { fleetReports } from "#test/storyTraits.ts";
 
-const STARTED = 1000;
-const NOW = 61_000;
+const aLaunch = projectFiles(launchFiles, "a launch goal has done, working, startable, blocked and held tasks and an open decision");
 
-const aLaunch = projectFiles(
-	{
-		"ask.md":
-			"---\nid: decision.scope\nkind: question\nscope: task\nurgency: whenever\noptions:\n - label: Ship\n   description: Launch this week\n - label: Wait\n   description: Launch next month\nrecommended: Ship\nattention:\n - id: direction\n   kind: decision\n   state: open\n   response_from: [maintainer]\n   reason: Choose the launch scope\n   unblocks: [task.build]\n---\n# Launch scope",
-		"build.md":
-			"---\nid: task.build\nkind: task\nstatus: ready\nowner: claude\ncriteria:\n - id: proof\n   text: Show the page\nrelationships:\n - kind: implements\n   target: project.launch#page\n---\n# Build the page",
-		"done.md": "---\nid: task.done\nkind: task\nstatus: done\nrelationships:\n - kind: implements\n   target: project.launch\n---\n# Write the plan",
-		"goal.md": "---\nid: project.launch\nkind: goal\nstatus: draft\ncriteria:\n - id: page\n   text: A page exists\n---\n# Launch",
-	},
-	"a launch goal has done and planned work and an open decision",
-);
-
-const aBuildInFlight = fleetReports({
-	areas: [
-		{ area: "work-board", holders: [{ prUrl: "https://github.com/example/project/pull/7", stage: "working", workId: "task.build" }], queue: [] },
-	],
-	completed: [],
-	items: [
-		{
-			execution: {
-				attempts: [{ fixingCi: false, id: "worker", role: "worker", sessionId: "worker", started: true, startedAt: STARTED, status: "running" }],
-				mergeReady: false,
-				question: false,
-				step: "working",
-			},
-			prUrl: "https://github.com/example/project/pull/7",
-			stage: "working",
-			stageEnteredAt: STARTED,
-			updatedAt: STARTED,
-			workId: "task.build",
-		},
-		{ stage: "queued", stageEnteredAt: STARTED, updatedAt: STARTED, workId: "task.queued" },
-	],
-});
+const launch = { id: "project.launch", title: "Launch" };
 
 boardStory.it(
-	"the plugin's board read shows the open decision, the build in flight, the area it holds and the launch goal's progress",
-	[aLaunch, aBuildInFlight],
+	"the plugin's board read shows the open decision, the working task, the one task ready to start and the launch goal's progress",
+	[aLaunch],
 	function* ({ boardUrl, pluginSection }) {
-		const flight = {
-			agents: [
-				{ id: "worker", role: "worker", state: "coding", turnMs: NOW - STARTED },
-				{ id: "planned:reviewer", role: "reviewer", state: "not started yet", turnMs: null },
-			],
-			goal: { id: "project.launch", title: "Launch" },
-			prUrl: "https://github.com/example/project/pull/7",
-			stage: "working",
-			title: "Build the page",
-			workId: "task.build",
-		};
 		yield* outcomes([
 			[
-				"areas",
-				() => pluginSection("areas", NOW),
-				{
-					items: [
-						{
-							area: "work-board",
-							holders: [{ prUrl: "https://github.com/example/project/pull/7", stage: "working", title: "Build the page", workId: "task.build" }],
-							queue: [],
-						},
-					],
-					problem: null,
-				},
-			],
-			[
 				"asks",
-				() => pluginSection("asks", NOW),
+				() => pluginSection("asks"),
 				{
-					items: [{ key: "open:task.build", title: "Build the page", url: boardUrl("/_board/item/decision.scope/#answer-card-direction") }],
+					items: [{ key: "open:task.asked", title: "Pick the scope", url: boardUrl("/_board/item/decision.scope/#answer-card-direction") }],
 					problem: null,
 				},
 			],
 			[
-				"flights",
-				() => pluginSection("flights", NOW),
-				{
-					items: [flight],
-					problem: null,
-				},
+				"working",
+				() => pluginSection("working"),
+				{ items: [{ goal: launch, id: "task.build", owner: "claude", title: "Build the page" }], problem: null },
 			],
+			["ready", () => pluginSection("ready"), { items: [{ goal: launch, id: "task.wire", owner: "claude", title: "Wire the form" }], problem: null }],
 			[
 				"goals",
-				() => pluginSection("goals", NOW),
+				() => pluginSection("goals"),
 				{
 					items: [
 						{
 							achieved: false,
-							blocked: 0,
+							blocked: 1,
 							done: 1,
 							id: "project.launch",
-							parked: 0,
+							parked: 1,
 							running: 1,
-							scheduled: 0,
+							scheduled: 2,
 							standing: false,
 							title: "Launch",
-							total: 2,
+							total: 6,
 						},
 					],
 					problem: null,
@@ -114,45 +54,38 @@ boardStory.it(
 );
 
 boardStory.it(
-	"the plugin's overview tool counts the waiting decision, the build in flight and the goal's progress",
-	[aLaunch, aBuildInFlight],
+	"the plugin's overview tool counts the waiting decision, the working task, the task ready to start and the goal's progress",
+	[aLaunch],
 	function* ({ pluginOverview }) {
 		expect(yield* pluginOverview()).toMatchObject({
-			fleet: { items: [{ goal: { id: "project.launch" }, workId: "task.build" }], state: "ready" },
-			goals: { done: 1, total: 2 },
-			needsYou: { count: 1, you: [{ id: "task.build", reason: "Choose the launch scope", title: "Build the page" }] },
+			goals: { done: 1, total: 6 },
+			inProgress: { count: 1, tasks: [{ id: "task.build" }] },
+			needsYou: { count: 1, you: [{ id: "task.asked", reason: "Choose the launch scope", title: "Pick the scope" }] },
+			readyToStart: { count: 1, tasks: [{ id: "task.wire" }] },
 		});
 	},
 );
 
-boardStory.it(
-	"the plugin's needs-you tool offers the decision's options and recommendation",
-	[aLaunch, aBuildInFlight],
-	function* ({ pluginNeedsYou }) {
-		expect((yield* pluginNeedsYou()).you).toEqual([
-			expect.objectContaining({
-				id: "task.build",
-				options: [expect.objectContaining({ label: "Ship" }), expect.objectContaining({ label: "Wait" })],
-				recommended: "Ship",
-			}),
-		]);
-	},
-);
+boardStory.it("the plugin's needs-you tool offers the decision's options and recommendation", [aLaunch], function* ({ pluginNeedsYou }) {
+	expect((yield* pluginNeedsYou()).you).toEqual([
+		expect.objectContaining({
+			id: "task.asked",
+			options: [expect.objectContaining({ label: "Ship" }), expect.objectContaining({ label: "Wait" })],
+			recommended: "Ship",
+		}),
+	]);
+});
 
-boardStory.it(
-	"the plugin's item tool reads the build's criteria, relationships and Fleet stage",
-	[aLaunch, aBuildInFlight],
-	function* ({ pluginItem }) {
-		expect(yield* pluginItem("task.build")).toMatchObject({
-			criteria: [{ id: "proof", text: "Show the page" }],
-			fleet: { item: { stage: "working", workId: "task.build" }, state: "ready" },
-			id: "task.build",
-			owner: "claude",
-			relationships: [{ kind: "implements", target: "project.launch#page" }],
-			status: "ready",
-		});
-	},
-);
+boardStory.it("the plugin's item tool reads the working build's criteria, relationships and status", [aLaunch], function* ({ pluginItem }) {
+	expect(yield* pluginItem("task.build")).toEqual({
+		criteria: [{ id: "proof", text: "Show the page" }],
+		id: "task.build",
+		openDecisions: [],
+		owner: "claude",
+		relationships: [{ kind: "implements", target: "project.launch#page" }],
+		status: "working",
+	});
+});
 
 boardStory.it(
 	"the plugin's board read carries every progress state and standing goals",
@@ -161,7 +94,7 @@ boardStory.it(
 		yield* outcomes([
 			[
 				"progress",
-				() => pluginGoal("goal.progress", NOW),
+				() => pluginGoal("goal.progress"),
 				{
 					achieved: false,
 					blocked: 4,
@@ -175,7 +108,7 @@ boardStory.it(
 					total: 14,
 				},
 			],
-			["standing", () => pluginGoal("goal.standing", NOW), expect.objectContaining({ done: 1, standing: true, total: 1 })],
+			["standing", () => pluginGoal("goal.standing"), expect.objectContaining({ done: 1, standing: true, total: 1 })],
 		]);
 	},
 );

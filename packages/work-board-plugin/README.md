@@ -1,14 +1,14 @@
 # @shivaedev/work-board-plugin
 
-The Work Board inside Claude Code: what needs you, what Fleet has in flight and how your goals are doing, one glance from the prompt.
+The Work Board inside Claude Code: what needs you, what is in progress, what is ready to start and how your goals are doing, one glance from the prompt.
 
 ## Why you want this
 
 A Work Board runs beside your sessions, but its browser tab is not where you are looking. With the plugin, each Claude Code session finds its own Board and shows it where you work:
-- a one-line band above the prompt that sums Needs you, In flight and Goals, with a button that opens the pane;
-- a `/workboard` pane listing each Needs you item as a pressable line, started Fleet work grouped by goal with each agent’s activity, current or finished turn duration and PR number, and goal progress bars or a plain “all tasks done” check;
+- a one-line band above the prompt that sums Needs you, In progress, Ready and Goals, with a button that opens the pane;
+- a `/workboard` pane listing each Needs you item as a pressable line, the tasks in progress and the tasks ready to start grouped by goal with each task’s owner, and goal progress bars or a plain “all tasks done” check;
 - a toast when a new decision lands for you;
-- three read-only tools the model can call, named after the Board's own MCP tools: `board_overview`, `needs_you` and `item`.
+- three read-only tools the model can call, named after the Board's own MCP tools: `board_overview` for what needs you, the tasks in progress and ready to start, and goal progress; `needs_you` for each waiting decision with its options and age; and `item` for one item's authored status, owner, criteria, relationships and open decisions.
 
 ## Using it
 
@@ -26,9 +26,9 @@ The plugin only reads the Board. Answer decisions in the Board itself or through
 
 ### The pane
 
-The pane folds goals with status `done` under an “Achieved (N)” row, closed by default. Click it to show those goals. Open goals stay visible, including goals whose tasks are all done. In flight and goal running counts use the same Board overview snapshot. If Fleet cannot be reached, In flight shows why it is unavailable.
+The pane folds goals with status `done` under an “Achieved (N)” row, closed by default. Click it to show those goals. Open goals stay visible, including goals whose tasks are all done. In progress, Ready to start and goal running counts use the same Board overview snapshot, so they agree.
 
-Areas lists only the areas Fleet holds or queues work for, as wrapping chips with held areas first; free areas are left out, and with none busy the section says no area is held or queued. Amber marks a held area or a queue of fewer than five tasks; red marks five or more queued tasks. Each chip names its state and queue count. Open a chip to read its holders, stages and PR links, followed by the approved queue in Fleet's order. A Fleet daemon that does not supply availability is shown as unknown.
+In progress lists the tasks whose status is `working`: whoever starts an agent on a task sets that status, and sets `done` when the work merges. Ready to start lists what the Board computes as startable now: tasks with `fleet: approved` that are not working, done, deferred or dropped, have no open ask blocking them and whose every `depends_on` target is done. Both group their tasks by the goal each implements, the largest group first and tasks without a goal under Other. A Board too old to send these lists leaves both sections unknown and says to update it.
 
 ### Install
 

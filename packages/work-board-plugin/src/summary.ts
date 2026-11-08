@@ -1,10 +1,10 @@
-import type { WorkboardBlock, WorkboardBoard, WorkboardFlight, WorkboardGoal, WorkboardGoalRef } from "#types/index.d.ts";
+import type { WorkboardBlock, WorkboardBoard, WorkboardGoal, WorkboardGoalRef, WorkboardTask } from "#types/index.d.ts";
 
 type ReadyBoard = Extract<WorkboardBoard, { kind: "ready" }>;
 
-export interface FlightGroup {
+export interface TaskGroup {
 	goal: WorkboardGoalRef | null;
-	items: WorkboardFlight[];
+	items: WorkboardTask[];
 }
 
 export function countOf<T>(block: WorkboardBlock<T>): string {
@@ -16,7 +16,7 @@ export function needsYou(board: ReadyBoard): number {
 }
 
 export function bandLine(board: ReadyBoard): string {
-	const { asks, flights, goals } = board;
+	const { asks, goals, ready, working } = board;
 	let done = 0;
 	let total = 0;
 	for (const goal of goals.items) {
@@ -24,7 +24,7 @@ export function bandLine(board: ReadyBoard): string {
 		total += goal.total;
 	}
 	const progress = goals.problem === null ? `${done}/${total}` : "?";
-	return `Needs you ${countOf(asks)} · In flight ${countOf(flights)} · Goals ${progress}`;
+	return `Needs you ${countOf(asks)} · In progress ${countOf(working)} · Ready ${countOf(ready)} · Goals ${progress}`;
 }
 
 export function goalShare(goal: WorkboardGoal): number {
@@ -42,12 +42,12 @@ export function goalOrder(goals: readonly WorkboardGoal[]): WorkboardGoal[] {
 	return [...goals].sort((a, b) => goalRank(a) - goalRank(b) || goalShare(a) - goalShare(b));
 }
 
-export function flightGroups(flights: readonly WorkboardFlight[]): FlightGroup[] {
-	const groups = new Map<string | null, FlightGroup>();
-	for (const flight of flights) {
-		const id = flight.goal?.id ?? null;
-		const group = groups.get(id) ?? { goal: flight.goal, items: [] };
-		group.items.push(flight);
+export function taskGroups(tasks: readonly WorkboardTask[]): TaskGroup[] {
+	const groups = new Map<string | null, TaskGroup>();
+	for (const task of tasks) {
+		const id = task.goal?.id ?? null;
+		const group = groups.get(id) ?? { goal: task.goal, items: [] };
+		group.items.push(task);
 		groups.set(id, group);
 	}
 	const goals = [...groups.values()].filter((group) => group.goal !== null);

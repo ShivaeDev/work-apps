@@ -608,9 +608,6 @@ importers:
       '@shivaedev/test-story':
         specifier: 'catalog:'
         version: 0.37.1(@effect/atom-react@4.0.6(effect@4.0.6)(react@19.3.1)(scheduler@0.28.0))(@effect/platform-node@4.0.6(effect@4.0.6)(redis@6.3.0))(@effect/sql-pg@4.0.6(effect@4.0.6))(@effect/vitest@4.0.6(effect@4.0.6)(vitest@5.0.5))(effect@4.0.6)(happy-dom@21.0.4(patch_hash=dc0b222e3d5e9b87e514afd158e172ebaae0b5577abd0b518518940b0801cad7))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vitest@5.0.5)
-      '@shivaedev/work-fleet':
-        specifier: workspace:*
-        version: link:../work-fleet
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2

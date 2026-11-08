@@ -1,4 +1,4 @@
-import { flightsOf, goalsOf, goalTitlesOf } from "./answers.ts";
+import { goalsOf, goalTitlesOf, type TaskList, tasksOf } from "./answers.ts";
 import { silentLine } from "./lines.ts";
 import { fileUrl, identityUrl, isRecord, type RpcRequest, readExits, records, responseUrl, text } from "./rpc.ts";
 
@@ -59,37 +59,33 @@ export async function needsYou({ ask, now }: Board) {
 	return { complete: isRecord(inbox) ? inbox.complete : undefined, issues: isRecord(inbox) ? inbox.issues : [], you };
 }
 
-export async function overview({ ask, now }: Board) {
+export async function overview({ ask }: Board) {
 	const [inbox, snapshot] = await ask([query("inbox"), query("overview")]);
-	const fleetItems = isRecord(snapshot) ? snapshot.fleet : undefined;
 	const goalList = isRecord(snapshot) ? snapshot.goals : undefined;
+	const titles = goalTitlesOf(goalList);
 	const you = records(isRecord(inbox) ? inbox.you : undefined).map((row) => ({ id: row.id, reason: row.reason, title: row.title }));
-	const flights = flightsOf(fleetItems, now, goalTitlesOf(goalList));
 	const goals = goalsOf(goalList).items;
+	function tasks(list: TaskList) {
+		const block = tasksOf(isRecord(snapshot) ? snapshot.tasks : undefined, list, titles);
+		return block.problem === null ? { count: block.items.length, tasks: block.items } : { problem: block.problem };
+	}
 	return {
-		fleet:
-			flights.problem === null
-				? { items: flights.items, state: "ready" }
-				: { reason: isRecord(fleetItems) ? fleetItems.reason : flights.problem, state: "unavailable" },
 		goals: {
 			done: goals.reduce((sum, goal) => sum + goal.done, 0),
 			goals,
 			total: goals.reduce((sum, goal) => sum + goal.total, 0),
 		},
+		inProgress: tasks("working"),
 		needsYou: { complete: isRecord(inbox) ? inbox.complete : undefined, count: you.length, you },
+		readyToStart: tasks("ready"),
 	};
 }
 
 export async function item({ ask }: Board, id: string) {
-	const [document, fleet] = await ask([documentAt(identityUrl(id)), query("fleetItems")]);
+	const [document] = await ask([documentAt(identityUrl(id))]);
 	const metadata = isRecord(document) && isRecord(document.metadata) ? document.metadata : {};
-	const ready = isRecord(fleet) && fleet.state === "ready";
-	const held = ready
-		? [...records(fleet.items), ...records(fleet.completed)].find((entry) => entry.workId === id && entry.stage !== "released")
-		: undefined;
 	return {
 		criteria: metadata.criteria ?? [],
-		fleet: ready ? { item: held ?? null, state: "ready" } : fleet,
 		id,
 		openDecisions: records(isRecord(document) ? document.requests : undefined).filter((request) => request.open === true),
 		owner: metadata.owner,

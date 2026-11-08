@@ -122,7 +122,7 @@ boardStory.it(
 );
 
 boardStory.it(
-	"without Fleet, Work lists the ready tasks as in progress from their own files",
+	"without Fleet, Work lists the ready and working tasks as in progress from their own files",
 	[
 		projectFiles({
 			"active.md": "---\nid: task.active\nkind: task\nstatus: ready\nowner: codex\n---\n# Ready task",
@@ -133,6 +133,7 @@ boardStory.it(
 			"planned.md": "---\nid: task.draft\nkind: task\nstatus: draft\n---\n# Draft task",
 			"project.md": "---\nid: project.running\nkind: goal\nstatus: ready\n---\n# Running goal",
 			"review.md": "---\nid: task.review\nkind: task\nstatus: ready\n---\n# Reviewed task",
+			"working.md": "---\nid: task.working\nkind: task\nstatus: working\n---\n# Working task",
 		}),
 		deferredServing,
 	],
@@ -145,6 +146,7 @@ boardStory.it(
 				{ file: "delivering.md", status: "ready", title: "Delivering task", workId: "task.delivering" },
 				{ file: "merge.md", status: "ready", title: "Merge task", workId: "task.merge" },
 				{ file: "review.md", status: "ready", title: "Reviewed task", workId: "task.review" },
+				{ file: "working.md", status: "working", title: "Working task", workId: "task.working" },
 			],
 			reason: "Fleet isn't set up for this Board.",
 			state: "unavailable",

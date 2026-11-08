@@ -2,6 +2,7 @@ import { Schema } from "effect";
 import { DocumentRequest } from "#browser/document/schema.ts";
 import { FleetItemsProjection } from "#browser/views/FleetItemsProjection.ts";
 import { GoalsProjection } from "#browser/views/GoalsProjection.ts";
+import { OverviewProjection } from "#browser/views/OverviewProjection.ts";
 import { InboxProjection } from "#browser/views/schema.ts";
 import { FleetItem } from "#diagnostics/fleetItems.ts";
 import { Metadata } from "#metadata/schema.ts";
@@ -32,6 +33,7 @@ export const Overview = Schema.toCodecJson(
 			goals: GoalsProjection.fields.goals,
 		}),
 		needsYou: Schema.Struct({ ...Needs.fields, count: Schema.Number }),
+		tasks: OverviewProjection.fields.tasks,
 	}),
 );
 export const Item = Schema.toCodecJson(

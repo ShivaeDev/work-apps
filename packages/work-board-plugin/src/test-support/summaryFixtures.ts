@@ -1,4 +1,4 @@
-import type { WorkboardFlight, WorkboardGoal } from "#types/index.d.ts";
+import type { WorkboardGoal, WorkboardTask } from "#types/index.d.ts";
 
 export function goal(id: string, done: number, running: number, total: number): WorkboardGoal {
 	return {
@@ -15,13 +15,6 @@ export function goal(id: string, done: number, running: number, total: number): 
 	};
 }
 
-export function flight(workId: string, stage: string, goalId: string | null): WorkboardFlight {
-	return {
-		agents: [],
-		goal: goalId === null ? null : { id: goalId, title: goalId.replace("goal.", "") },
-		prUrl: null,
-		stage,
-		title: workId,
-		workId,
-	};
+export function task(id: string): WorkboardTask {
+	return { goal: null, id, owner: null, title: id };
 }

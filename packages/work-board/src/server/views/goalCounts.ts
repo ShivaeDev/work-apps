@@ -11,7 +11,7 @@ export function goalCounts(snapshot: Snapshot, fleet?: FleetItemsProjection) {
 	function state(item: Item): keyof GoalCounts {
 		const fields = item.document.parsed.fields;
 		const run = runs.get(item.id);
-		if (run && fleetInFlight(run)) {
+		if ((run && fleetInFlight(run)) || fields.status === "working") {
 			return "running";
 		}
 		if (fields.status === "done") {
@@ -23,10 +23,7 @@ export function goalCounts(snapshot: Snapshot, fleet?: FleetItemsProjection) {
 		if (run?.stage === "done") {
 			return "done";
 		}
-		if (fields.status === "deferred" || fields.fleet === "held" || fields.fleet === "manual") {
-			return "parked";
-		}
-		return fields.fleet === "approved" ? "scheduled" : "parked";
+		return fields.status !== "deferred" && fields.fleet === "approved" ? "scheduled" : "parked";
 	}
 	return (items: readonly Item[]): GoalCounts => {
 		const counts = { blocked: 0, done: 0, parked: 0, running: 0, scheduled: 0 };

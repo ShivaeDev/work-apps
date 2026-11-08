@@ -5,7 +5,7 @@ const NO_INPUT = { additionalProperties: false, properties: {}, type: "object" }
 const SPECS: readonly ToolSpec[] = [
 	{
 		description:
-			"Read-only: what needs you on the Work Board (count, titles and reasons), in-flight Fleet items with stage, time in stage, PR URL and the goal each implements, and goal progress done/total.",
+			"Read-only: what needs you on the Work Board (count, titles and reasons), the tasks in progress (status working), the tasks ready to start now (approved, not done, every dependency done, no open ask blocking it) with the goal each implements, and goal progress done/total.",
 		inputSchema: NO_INPUT,
 		isDeferred: false,
 		name: "board_overview",
@@ -17,7 +17,7 @@ const SPECS: readonly ToolSpec[] = [
 		name: "needs_you",
 	},
 	{
-		description: "Read-only: one Work Board item's computed status, owner, criteria, relationships, Fleet state and open decisions, by its id.",
+		description: "Read-only: one Work Board item's authored status, owner, criteria, relationships and open decisions, by its id.",
 		inputSchema: {
 			additionalProperties: false,
 			properties: { id: { description: "The item id, such as task.first", type: "string" } },

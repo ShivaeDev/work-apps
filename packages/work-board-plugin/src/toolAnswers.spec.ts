@@ -2,12 +2,11 @@ import { expect } from "vitest";
 import {
 	boardTools,
 	decisionWaits,
-	fleetHolds,
-	fleetUnavailable,
 	goalsCounted,
 	nextAmongOtherRequests,
 	onlyAnEarlierRequest,
 	taskAuthored,
+	tasksListed,
 } from "#test/boardTools.ts";
 
 const goalA = { counts: { done: 1, parked: 3 }, id: "goal.a", title: "Goal A" };
@@ -28,13 +27,26 @@ boardTools.it("board_overview sums the done and total tasks of goal.a and goal.b
 	expect(yield* overviewGoalTotals()).toEqual({ done: 3, total: 8 });
 });
 
+const queue = tasksListed({
+	ready: [{ file: "wire.md", goal: "goal.a", id: "task.wire", title: "Wire the tools" }],
+	working: [{ file: "build.md", goal: "goal.a", id: "task.build", owner: "claude", title: "Build the pane" }],
+});
+
 boardTools.it(
-	"board_overview passes on Fleet's own reason when Fleet is unavailable",
-	[fleetUnavailable("Fleet is not configured")],
-	function* ({ overviewFleet }) {
-		expect(yield* overviewFleet()).toEqual({ reason: "Fleet is not configured", state: "unavailable" });
+	"board_overview lists task.build in progress and task.wire ready to start, each with Goal A's title",
+	[goalsCounted(goalA), queue],
+	function* ({ overviewTasks }) {
+		expect(yield* overviewTasks()).toEqual({
+			inProgress: { count: 1, tasks: [{ goal: { id: "goal.a", title: "Goal A" }, id: "task.build", owner: "claude", title: "Build the pane" }] },
+			readyToStart: { count: 1, tasks: [{ goal: { id: "goal.a", title: "Goal A" }, id: "task.wire", owner: null, title: "Wire the tools" }] },
+		});
 	},
 );
+
+boardTools.it("board_overview says the Board needs updating when it sends no task lists", [goalsCounted(goalA)], function* ({ overviewTasks }) {
+	const problem = { problem: "This Board does not list tasks to start; update it." };
+	expect(yield* overviewTasks()).toEqual({ inProgress: problem, readyToStart: problem });
+});
 
 boardTools.it(
 	"needs_you gives decision.a the options, prompts and recommendation of the request its link opens",
@@ -56,25 +68,11 @@ boardTools.it("needs_you gives decision.a an age of the 5 seconds since decide.m
 	expect(yield* ageOf("decision.a")).toBe("5 seconds");
 });
 
-boardTools.it(
-	"while Fleet holds task.a as done, item reports task.a's authored owner, draft status, criterion and only its open decision",
-	[taskAuthored, fleetHolds("done")],
-	function* ({ authoredOf }) {
-		expect(yield* authoredOf("task.a")).toEqual({
-			criteria: [{ id: "proof" }],
-			openDecisions: [{ id: "r", open: true }],
-			owner: "codex",
-			status: "draft",
-		});
-	},
-);
-
-for (const stage of ["waiting", "done"] as const) {
-	boardTools.it(`item task.a shows the Fleet item holding it at the ${stage} stage`, [taskAuthored, fleetHolds(stage)], function* ({ fleetOf }) {
-		expect(yield* fleetOf("task.a")).toEqual({ item: { stage, workId: "task.a" }, state: "ready" });
+boardTools.it("item reports task.a's authored owner, draft status, criterion and only its open decision", [taskAuthored], function* ({ authoredOf }) {
+	expect(yield* authoredOf("task.a")).toEqual({
+		criteria: [{ id: "proof" }],
+		openDecisions: [{ id: "r", open: true }],
+		owner: "codex",
+		status: "draft",
 	});
-}
-
-boardTools.it("item task.a shows no Fleet item once Fleet released it", [taskAuthored, fleetHolds("released")], function* ({ fleetOf }) {
-	expect(yield* fleetOf("task.a")).toEqual({ item: null, state: "ready" });
 });

@@ -66,7 +66,7 @@ export const Metadata = Schema.Struct({
 	response: Schema.optional(ResponseRecord),
 	scope: Schema.optional(Schema.Literals(["task", "area", "standing"])),
 	standing: Schema.optional(Schema.Boolean),
-	status: Schema.optional(Schema.Literals(["draft", "ready", "done", "deferred", "dropped"])),
+	status: Schema.optional(Schema.Literals(["draft", "ready", "working", "done", "deferred", "dropped"])),
 	sweep: Schema.optional(Schema.Array(SweepPath).check(Schema.isMinLength(1))),
 	urgency: Schema.optional(Schema.Literals(["blocking", "whenever"])),
 }).pipe(Schema.encodeKeys({ nextAction: "next_action", requestReceipt: "request_receipt" }));

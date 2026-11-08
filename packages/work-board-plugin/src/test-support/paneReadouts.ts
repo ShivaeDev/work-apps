@@ -1,10 +1,6 @@
-export interface Shown {
-	readonly turns: boolean;
-}
-
-export interface FlightGroupShown {
+export interface TaskGroupShown {
 	readonly goal: string;
-	readonly work: readonly string[];
+	readonly tasks: readonly string[];
 }
 
 function textOf(node: Element | null | undefined): string {
@@ -20,45 +16,14 @@ function sectionBody(container: Element, title: string): Element {
 	return body;
 }
 
-function flightRows(container: Element): Element[] {
-	const body = sectionBody(container, "In flight");
-	return [...body.children].flatMap((group) => [...group.children].slice(1));
-}
-
-function flightTitle(row: Element): string {
-	return textOf(row.firstElementChild?.children[1]);
-}
-
-export function inFlightShown(container: Element): string | FlightGroupShown[] {
-	const body = sectionBody(container, "In flight");
+export function tasksShown(container: Element, title: string): string | TaskGroupShown[] {
+	const body = sectionBody(container, title);
 	if (body.tagName === "SPAN") {
 		return textOf(body);
 	}
-	return [...body.children].map((group) => ({ goal: textOf(group.firstElementChild), work: [...group.children].slice(1).map(flightTitle) }));
-}
-
-export function agentsShown(container: Element, title: string, { turns }: Shown): string[] {
-	const row = flightRows(container).find((candidate) => flightTitle(candidate) === title);
-	if (!row) {
-		throw new Error(`In flight shows no ${title}`);
-	}
-	return [...(row.querySelector(":scope > div:last-child")?.children ?? [])].slice(1).map((agent) => {
-		const [activity = "", turn] = [...agent.children].map(textOf);
-		return turns && turn !== undefined ? `${activity} · ${turn}` : activity;
-	});
-}
-
-export function flightLinesShown(container: Element) {
-	return [...sectionBody(container, "In flight").children].map((group) => ({
+	return [...body.children].map((group) => ({
 		goal: textOf(group.firstElementChild),
-		tasks: [...group.children].slice(1).map((row) =>
-			[...row.children].map((line) =>
-				[...line.children]
-					.map((part) => [...part.children].map(textOf).join(" ") || textOf(part))
-					.filter(Boolean)
-					.join("   "),
-			),
-		),
+		tasks: [...group.children].slice(1).map((row) => [...row.children].map(textOf).filter(Boolean).join(" · ")),
 	}));
 }
 

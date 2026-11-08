@@ -1,41 +1,23 @@
-import type { WorkboardBlock, WorkboardFlight, WorkboardGoal } from "#types/index.d.ts";
+import type { WorkboardBlock, WorkboardGoal, WorkboardTask } from "#types/index.d.ts";
 import { isRecord, records, text } from "./rpc.ts";
 
-export const STAGES = ["queued", "working", "reviewing", "waiting"] as const;
-const STAGE_NAMES: ReadonlySet<unknown> = new Set(STAGES);
+export type TaskList = "ready" | "working";
 
-export function flightsOf(value: unknown, now: number, titles: ReadonlyMap<string, string> = new Map()): WorkboardBlock<WorkboardFlight> {
-	if (!isRecord(value)) {
-		return { items: [], problem: "Fleet sent no items." };
+export function tasksOf(value: unknown, list: TaskList, titles: ReadonlyMap<string, string>): WorkboardBlock<WorkboardTask> {
+	const rows = isRecord(value) ? value[list] : undefined;
+	if (!Array.isArray(rows)) {
+		return { items: [], problem: "This Board does not list tasks to start; update it." };
 	}
-	if (value.state !== "ready") {
-		return { items: [], problem: `Fleet is unavailable: ${text(value.reason) ?? "no reason given"}` };
-	}
-	const items = records(value.items)
-		.filter((row) => STAGE_NAMES.has(row.stage) && row.inFlight === true)
-		.map((row) => {
-			const workId = text(row.workId) ?? "unknown";
-			const document = isRecord(row.document) ? row.document : {};
-			const goalId = goalIdOf(document.metadata, titles);
-			return {
-				agents: records(row.agents).map((agent) => ({
-					id: text(agent.id) ?? "agent",
-					role: text(agent.role) ?? "agent",
-					state: text(agent.state) ?? "not started yet",
-					turnMs:
-						typeof agent.startedAt === "number" && (agent.running === true || typeof agent.finishedAt === "number")
-							? Math.max(0, (typeof agent.finishedAt === "number" ? agent.finishedAt : now) - agent.startedAt)
-							: null,
-				})),
-				attentionOwner: text(row.attentionOwner),
-				goal: goalId === null ? null : { id: goalId, title: titles.get(goalId) ?? goalId },
-				prUrl: text(row.prUrl) ?? null,
-				stage: text(row.stage) ?? "unknown",
-				title: text(document.title) ?? workId,
-				waitingReason: text(row.waitingReason),
-				workId,
-			};
-		});
+	const items = records(rows).map((row) => {
+		const id = text(row.id) ?? "task";
+		const goal = text(row.goal);
+		return {
+			goal: goal === undefined ? null : { id: goal, title: titles.get(goal) ?? goal },
+			id,
+			owner: text(row.owner) ?? null,
+			title: text(row.title) ?? id,
+		};
+	});
 	return { items, problem: null };
 }
 
@@ -66,17 +48,6 @@ export function goalsOf(value: unknown): WorkboardBlock<WorkboardGoal> {
 		};
 	});
 	return { items, problem: null };
-}
-
-function goalIdOf(metadata: unknown, titles: ReadonlyMap<string, string>): string | null {
-	const links = isRecord(metadata) ? records(metadata.relationships) : [];
-	for (const link of links) {
-		const id = link.kind === "implements" ? text(link.target)?.split("#")[0] : undefined;
-		if (id !== undefined && (titles.has(id) || id.startsWith("goal."))) {
-			return id;
-		}
-	}
-	return null;
 }
 
 export function goalTitlesOf(value: unknown): Map<string, string> {

@@ -8,7 +8,7 @@ const result = { failure: BoardToolError };
 const tools = Toolkit.make(
 	Tool.make("board_overview", {
 		...result,
-		description: "Read needs-you items and count, in-flight Fleet stages and PRs, and goal progress counts.",
+		description: "Read needs-you items and count, tasks ready to start and in progress, in-flight Fleet stages and PRs, and goal progress counts.",
 		success: Overview,
 	}).annotate(Tool.Readonly, true),
 	Tool.make("needs_you", {

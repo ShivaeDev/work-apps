@@ -1,11 +1,10 @@
 import type { Elements, RenderElement, RenderSurface } from "claude-code";
-import { areaView } from "#areaView.tsx";
 import type { WorkboardAsk, WorkboardBlock, WorkboardBoard } from "#types/index.d.ts";
-import { flightHeading, flightRows } from "./flights.tsx";
 import { goalColors } from "./goalProgress.ts";
 import { goalRows } from "./goalRows.tsx";
 import { clip, waitingLine } from "./lines.ts";
 import { countOf } from "./summary.ts";
+import { taskRows } from "./taskRows.tsx";
 
 export type Table = Elements[RenderSurface];
 
@@ -16,8 +15,6 @@ export interface PaneView {
 	onOpen: (ask: WorkboardAsk) => void;
 	onRefresh: () => void;
 	onToggleAchieved: () => void;
-	onToggleArea: (area: string) => void;
-	openArea: string | null;
 	surface: RenderSurface;
 	updated: string | null;
 }
@@ -42,16 +39,14 @@ export function paneView(t: Table, view: PaneView): RenderElement {
 		);
 	}
 
-	const { asks, flights, goals } = view.board;
+	const { asks, goals, ready, working } = view.board;
 
 	return (
 		<Box flexDirection="column" gap={2}>
 			{header}
 			{section(t, titled(t, "Needs you", asks), asks, "Nothing waits on you.", (items) => askRows(t, items, view))}
-			{section(t, flightHeading(t, flights) ?? titled(t, "In flight", flights), flights, "Nothing in flight.", (items) =>
-				flightRows(t, items, view.columns),
-			)}
-			{areaView(t, view.board.areas, view)}
+			{section(t, titled(t, "In progress", working), working, "Nothing in progress.", (items) => taskRows(t, items, view.columns))}
+			{section(t, titled(t, "Ready to start", ready), ready, "Nothing is ready to start.", (items) => taskRows(t, items, view.columns))}
 			{section(t, titled(t, "Goals", goals), goals, "No open goals.", (items) => goalRows(t, items, view))}
 		</Box>
 	);

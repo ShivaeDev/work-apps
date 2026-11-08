@@ -7,17 +7,14 @@ const NOW = 1_800_000_000_000;
 
 interface BoardAnswers {
 	readonly documents: Map<string, unknown>;
-	fleetItems: unknown;
 	inbox: unknown;
-	readonly overview: { fleet?: unknown; goals?: unknown };
+	readonly overview: { goals?: unknown; tasks?: unknown };
 }
 
 function answerTo(answers: BoardAnswers, request: { readonly payload: unknown; readonly tag: string }): unknown {
 	switch (request.tag) {
 		case "work-board.document":
 			return answers.documents.get(text(isRecord(request.payload) ? request.payload.url : undefined) ?? "");
-		case "work-board.fleetItems":
-			return answers.fleetItems;
 		case "work-board.inbox":
 			return answers.inbox;
 		case "work-board.overview":
@@ -33,7 +30,7 @@ function idOf(row: Readonly<Record<string, unknown>>): unknown {
 
 export const boardTools = storyKit({
 	create: () => {
-		const answers: BoardAnswers = { documents: new Map(), fleetItems: undefined, inbox: undefined, overview: {} };
+		const answers: BoardAnswers = { documents: new Map(), inbox: undefined, overview: {} };
 		const board: Board = { ask: (requests) => Promise.resolve(requests.map((request) => answerTo(answers, request))), now: NOW };
 		return { answers, board };
 	},
@@ -61,14 +58,6 @@ export const boardTools = storyKit({
 					return { criteria, openDecisions, owner, status };
 				});
 			},
-			fleetOf: (id: string) => {
-				story.tell(`read the Fleet part of item ${id}`);
-				return Effect.promise(async () => (await item(board, id)).fleet);
-			},
-			overviewFleet: () => {
-				story.tell("read Fleet from board_overview");
-				return Effect.promise(async () => (await overview(board)).fleet);
-			},
 			overviewGoals: () => {
 				story.tell("read the goals from board_overview");
 				return Effect.promise(async () => (await overview(board)).goals.goals);
@@ -85,6 +74,13 @@ export const boardTools = storyKit({
 				return Effect.promise(async () => {
 					const { count, you } = (await overview(board)).needsYou;
 					return { count, you };
+				});
+			},
+			overviewTasks: () => {
+				story.tell("read In progress and Ready to start from board_overview");
+				return Effect.promise(async () => {
+					const { inProgress, readyToStart } = await overview(board);
+					return { inProgress, readyToStart };
 				});
 			},
 		};
@@ -142,11 +138,9 @@ export function goalsCounted(
 	});
 }
 
-export function fleetUnavailable(reason: string) {
-	return boardTools.trait("answers", `Fleet is unavailable: ${reason}`, (engine) => {
-		const fleet = { reason, state: "unavailable" };
-		engine.answers.overview.fleet = fleet;
-		engine.answers.fleetItems = fleet;
+export function tasksListed(tasks: { readonly ready: readonly unknown[]; readonly working: readonly unknown[] }) {
+	return boardTools.trait("answers", "the Board lists task.build in progress and task.wire ready to start, both under goal.a", (engine) => {
+		engine.answers.overview.tasks = tasks;
 	});
 }
 
@@ -163,13 +157,3 @@ export const taskAuthored = boardTools.trait(
 		});
 	},
 );
-
-export function fleetHolds(stage: "waiting" | "done" | "released") {
-	const list = stage === "waiting" ? "items" : "completed";
-	return boardTools.trait("answers", `Fleet lists task.a at the ${stage} stage among its ${list}`, (engine) => {
-		const held = { stage, workId: "task.a" };
-		const fleet = { completed: list === "completed" ? [held] : [], items: list === "items" ? [held] : [], state: "ready" };
-		engine.answers.overview.fleet = fleet;
-		engine.answers.fleetItems = fleet;
-	});
-}
