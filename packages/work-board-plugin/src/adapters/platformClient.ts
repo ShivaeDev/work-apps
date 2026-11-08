@@ -13,7 +13,7 @@ function problemOf(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error));
 }
 
-export function platformClient(directory: string, post: Post, now: () => Promise<number>) {
+export function platformClient(directory: string, post: Post) {
 	const client = browserClient(BOARD_ORIGIN, { live: false, protocol: hostProtocol(post) });
 	function run<A, E>(effect: Effect.Effect<A, E, Reader>) {
 		return client.run(effect).catch((error: unknown) => Promise.reject(problemOf(error)));
@@ -26,8 +26,6 @@ export function platformClient(directory: string, post: Post, now: () => Promise
 						return run(client.api.inbox.run(undefined));
 					case "work-board.overview":
 						return run(client.api.overview.run(undefined));
-					case "work-board.fleetItems":
-						return run(client.api.fleetItems.run(undefined));
 					case "work-board.server":
 						return run(client.api.server.run(undefined));
 					case "work-board.document": {
@@ -48,7 +46,7 @@ export function platformClient(directory: string, post: Post, now: () => Promise
 					{ inbox: client.api.inbox.run(undefined), overview: client.api.overview.run(undefined), server: client.api.server.run(undefined) },
 					{ concurrency: "unbounded" },
 				),
-			).then(async (values) => readSnapshot(values, await now())),
+			).then(readSnapshot),
 		close: () => client.registry.dispose(),
 	};
 }

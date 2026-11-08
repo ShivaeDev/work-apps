@@ -132,9 +132,9 @@ export function servingBoardReads(engine: BoardEngine, tell: (line: string) => v
 	function pluginReply() {
 		return Effect.promise(() => socketExchange(join(engine.notes.root, "board.sock"), boardInit(PLUGIN_DIRECTORY)));
 	}
-	function pluginBoard(at: number) {
+	function pluginBoard() {
 		return Effect.map(pluginReply(), (reply) => {
-			const board = readBoard(reply, PLUGIN_DIRECTORY, at);
+			const board = readBoard(reply, PLUGIN_DIRECTORY);
 			if (board.kind !== "ready") {
 				throw new Error(`The plugin could not read the board: ${JSON.stringify(board)}`);
 			}

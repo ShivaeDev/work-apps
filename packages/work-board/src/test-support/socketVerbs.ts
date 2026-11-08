@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { Clock, Effect } from "effect";
+import { Effect } from "effect";
 import type { readSnapshot } from "@shivaedev/work-board-plugin/board.ts";
 import { rpcPost } from "@shivaedev/work-board-plugin/rpc.ts";
 import { bundledClient } from "@shivaedev/work-board-plugin/test-support/bundledClient.ts";
@@ -61,12 +61,11 @@ export function socketVerbs(engine: BoardEngine, tell: (line: string) => void) {
 		openPlugin: () =>
 			Effect.acquireRelease(
 				Effect.gen(function* () {
-					const clock = yield* Clock.Clock;
 					const { platformClient } = yield* bundledClient();
 					tell(
 						"the Claude plugin opens its shipped client, which posts each request over board.sock and reads at most 4 MiB of each answer, as the host's fetch does",
 					);
-					const client = platformClient(engine.notes.root, boardSocket, () => Promise.resolve(clock.currentTimeMillisUnsafe()));
+					const client = platformClient(engine.notes.root, boardSocket);
 					plugin = client;
 					return client;
 				}),

@@ -5,10 +5,8 @@ import { storyKit } from "@shivaedev/test-story/server/storyKit.ts";
 import { readBoard } from "#board.ts";
 import { type PaneView, paneView } from "#pane.tsx";
 import { bandLine } from "#summary.ts";
-import { NOW } from "#test/admissionItems.ts";
-import { areaReadouts } from "#test/areaReadouts.ts";
 import { installPaneJsx, paneElements, reactPane } from "#test/paneElements.ts";
-import { agentsShown, drawingOf, flightLinesShown, goalLines, inFlightShown, legendShown, lookOf, terminalBarOf } from "#test/paneReadouts.ts";
+import { drawingOf, goalLines, legendShown, lookOf, tasksShown, terminalBarOf } from "#test/paneReadouts.ts";
 import { reply, success } from "#test/rpcReplies.ts";
 import type { WorkboardBoard } from "#types/index.d.ts";
 
@@ -38,11 +36,6 @@ export const createPane = Effect.fnUntraced(function* () {
 			view.achievedOpen = !view.achievedOpen;
 			draw();
 		},
-		onToggleArea: (area) => {
-			view.openArea = view.openArea === area ? null : area;
-			draw();
-		},
-		openArea: null,
 		surface: "desktop",
 		updated: "just now",
 	};
@@ -75,23 +68,25 @@ export function goalAnswer(title: string, counts: Readonly<Record<string, number
 function boardFrom(engine: PaneEngine): WorkboardBoard {
 	const goals = engine.goals.filter((goal) => goal.status !== "done");
 	const closedGoals = engine.goals.filter((goal) => goal.status === "done");
-	return readBoard(
-		reply(
-			success("1", { you: [] }),
-			success("2", { fleet: { areas: engine.areas, items: engine.work, state: "ready" }, goals: { closedGoals, goals } }),
-		),
-		"/repo",
-		NOW,
-	);
+	return readBoard(reply(success("1", { you: [] }), success("2", { goals: { closedGoals, goals }, tasks: engine.tasks })), "/repo");
 }
 
+export interface TaskAnswer {
+	readonly file: string;
+	readonly goal?: string;
+	readonly id: string;
+	readonly owner?: string;
+	readonly title: string;
+}
+
+type TaskList = "ready" | "working";
+
 interface PaneEngine {
-	areas?: readonly unknown[];
 	board: WorkboardBoard;
 	goals: GoalAnswer[];
 	readonly pane: Effect.Success<ReturnType<typeof createPane>>;
 	surface: RenderSurface;
-	readonly work: unknown[];
+	tasks: Record<TaskList, TaskAnswer[]> | undefined;
 }
 
 function show(engine: PaneEngine) {
@@ -101,18 +96,16 @@ function show(engine: PaneEngine) {
 
 export const pluginPane = storyKit({
 	after: { board: show },
-	create: () => Effect.map(createPane(), (pane): PaneEngine => ({ board: { kind: "loading" }, goals: [], pane, surface: "desktop", work: [] })),
+	create: () =>
+		Effect.map(
+			createPane(),
+			(pane): PaneEngine => ({ board: { kind: "loading" }, goals: [], pane, surface: "desktop", tasks: { ready: [], working: [] } }),
+		),
 	name: "Claude plugin pane",
 	stages: ["board"],
 	verbs: (engine, story) => {
 		const { container } = engine.pane;
 		return {
-			...areaReadouts(container, story.tell),
-			agentsOf: (title: string) =>
-				Effect.sync(() => {
-					story.tell(`read the agents of ${title} in flight`);
-					return agentsShown(container, title, { turns: true });
-				}),
 			band: () =>
 				Effect.sync(() => {
 					story.tell("read the band line for the same answers");
@@ -132,20 +125,15 @@ export const pluginPane = storyKit({
 					story.tell(`read the drawing of ${title}'s bar`);
 					return drawingOf(container, title);
 				}),
-			flightLines: () =>
-				Effect.sync(() => {
-					story.tell("read each goal and the task lines beneath it in flight");
-					return flightLinesShown(container);
-				}),
 			goals: () =>
 				Effect.sync(() => {
 					story.tell("read the Goals section");
 					return goalLines(container);
 				}),
-			inFlight: () =>
+			inProgress: () =>
 				Effect.sync(() => {
-					story.tell("read the In flight section");
-					return inFlightShown(container);
+					story.tell("read the In progress section");
+					return tasksShown(container, "In progress");
 				}),
 			legend: () =>
 				Effect.sync(() => {
@@ -156,6 +144,11 @@ export const pluginPane = storyKit({
 				Effect.sync(() => {
 					story.tell(`read how ${text} looks`);
 					return lookOf(container, text);
+				}),
+			readyToStart: () =>
+				Effect.sync(() => {
+					story.tell("read the Ready to start section");
+					return tasksShown(container, "Ready to start");
 				}),
 			taskScheduledIn: (title: string) =>
 				Effect.suspend(() => {
@@ -184,11 +177,16 @@ export function goalsAnswered(...goals: readonly GoalAnswer[]) {
 	});
 }
 
-export function workAnswered(...work: readonly { readonly document: { readonly title: string } }[]) {
-	return pluginPane.trait("board", `Fleet answers with ${work.map((item) => item.document.title).join(", ")}`, (engine) => {
-		engine.work.push(...work);
+export function tasksAnswered(list: TaskList, ...tasks: readonly TaskAnswer[]) {
+	const where = list === "ready" ? "ready to start" : "in progress";
+	return pluginPane.trait("board", `the Board lists ${tasks.map((task) => task.title).join(", ")} ${where}`, (engine) => {
+		engine.tasks?.[list].push(...tasks);
 	});
 }
+
+export const boardWithoutTaskLists = pluginPane.trait("board", "the Board answers without task lists, as Boards before them did", (engine) => {
+	engine.tasks = undefined;
+});
 
 export const onTerminal = pluginPane.trait("board", "the pane draws on a terminal", (engine) => {
 	engine.surface = "terminal";
@@ -201,11 +199,5 @@ export const achievedOpen = pluginPane.trait("board", "the Achieved list is alre
 export function paneColumns(columns: number) {
 	return pluginPane.trait("board", `the pane is ${columns} columns wide`, (engine) => {
 		engine.pane.view.columns = columns;
-	});
-}
-
-export function areasAnswered(areas: readonly unknown[]) {
-	return pluginPane.trait("board", "Fleet supplies area holders and queues", (engine) => {
-		engine.areas = areas;
 	});
 }

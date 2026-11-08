@@ -1,60 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { flightsOf, goalsOf, goalTitlesOf } from "#answers.ts";
+import { goalsOf, goalTitlesOf, tasksOf } from "#answers.ts";
 
-const NOW = 1_800_000_000_000;
-
-describe("Fleet items and goals", () => {
-	it("keeps started unfinished work, links each item to the goal it implements and times each agent turn", () => {
+describe("task lists and goals", () => {
+	it("names each listed task's goal by its title, from open, deferred or closed goals", () => {
 		const titles = goalTitlesOf({
 			closedGoals: [{ id: "goal.closed", title: "Closed goal" }],
 			deferredGoals: [{ id: "goal.parked", title: "Parked goal" }],
 			goals: [{ id: "project.open" }],
 		});
-		expect(titles.get("goal.parked")).toBe("Parked goal");
-		const flights = flightsOf(
-			{
-				items: [
-					{
-						agents: [{ finishedAt: NOW - 60_000, id: "worker", role: "worker", startedAt: NOW - 120_000, state: "done" }],
-						document: { metadata: { relationships: [{ kind: "implements", target: "goal.closed#part" }] }, title: "Linked" },
-						inFlight: true,
-						prUrl: "https://github.com/example/repo/pull/7",
-						stage: "reviewing",
-						stageEnteredAt: NOW - 60_000,
-						workId: "task.linked",
-					},
-					{
-						document: { metadata: { relationships: [{ kind: "implements", target: "project.x" }] } },
-						inFlight: true,
-						stage: "working",
-						workId: "task.loose",
-					},
-					{ stage: "queued", workId: "task.waiting" },
-				],
-				state: "ready",
-			},
-			NOW,
-			titles,
-		);
-		expect(flights).toEqual({
+		const tasks = {
+			ready: [
+				{ file: "a.md", goal: "goal.parked", id: "task.a", owner: "claude", title: "Linked" },
+				{ file: "b.md", goal: "goal.unknown", id: "task.b" },
+				{ file: "c.md", id: "task.c", title: "Loose" },
+			],
+			working: [],
+		};
+		expect(tasksOf(tasks, "ready", titles)).toEqual({
 			items: [
-				{
-					agents: [{ id: "worker", role: "worker", state: "done", turnMs: 60_000 }],
-					goal: { id: "goal.closed", title: "Closed goal" },
-					prUrl: "https://github.com/example/repo/pull/7",
-					stage: "reviewing",
-					title: "Linked",
-					workId: "task.linked",
-				},
-				{ agents: [], goal: null, prUrl: null, stage: "working", title: "task.loose", workId: "task.loose" },
+				{ goal: { id: "goal.parked", title: "Parked goal" }, id: "task.a", owner: "claude", title: "Linked" },
+				{ goal: { id: "goal.unknown", title: "goal.unknown" }, id: "task.b", owner: null, title: "task.b" },
+				{ goal: null, id: "task.c", owner: null, title: "Loose" },
 			],
 			problem: null,
 		});
+		expect(tasksOf(tasks, "working", titles)).toEqual({ items: [], problem: null });
 	});
 
-	it("says why Fleet has no items", () => {
-		expect(flightsOf({ reason: "Fleet is not configured", state: "unavailable" }, NOW).problem).toBe("Fleet is unavailable: Fleet is not configured");
-		expect(flightsOf(null, NOW).problem).toBe("Fleet sent no items.");
+	it("says the Board needs updating when it sends no task lists", () => {
+		expect(tasksOf(undefined, "ready", new Map()).problem).toBe("This Board does not list tasks to start; update it.");
 	});
 
 	it("keeps the five progress states and standing-home flag from the Board", () => {

@@ -1,6 +1,6 @@
 # @shivaedev/work-board-plugin
 
-The Work Board plugin brings the running Work Board into Claude Code, so a session sees what needs the maintainer, what Fleet has in flight and how goals are progressing without leaving the prompt. It is a Claude Code mod: a hooks module the Claude Code engine loads and draws, shipped from this repository's plugin marketplace and never published to npm.
+The Work Board plugin brings the running Work Board into Claude Code, so a session sees what needs the maintainer, which tasks are in progress, which are ready to start and how goals are progressing without leaving the prompt. It is a Claude Code mod: a hooks module the Claude Code engine loads and draws, shipped from this repository's plugin marketplace and never published to npm.
 
 The Board stays the source of truth. The plugin only reads it. It finds the `board.sock` of the nearest `.work` folder at or above the session's folder and runs the Board's authorized contract queries through Platform's contract client, each request one `$.http.fetch` over that socket, because the host gives a hooks module no WebSocket. With no live push, it reads the Board again on session start, on Refresh and on a timer. It answers with what the Board said or why it could not ask: no Board in this folder, a Board that is not running, or a request it refused. It never writes to the Board and never guesses state it was not given.
 

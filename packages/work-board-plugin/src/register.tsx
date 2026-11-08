@@ -13,11 +13,10 @@ const TITLE = "Work Board";
 const OPEN_LABEL = "Open board";
 const REFRESH_MS = 30_000;
 
-const board = atom({ key: "board", plugin: "workboard" } as const, { kind: "loading" }, { shape: "board-2" });
+const board = atom({ key: "board", plugin: "workboard" } as const, { kind: "loading" }, { shape: "board-3" });
 const seenAsks = atom({ key: "seenAsks", plugin: "workboard" } as const, null);
 const updatedAt = atom({ key: "updatedAt", plugin: "workboard" } as const, null);
 const achievedOpen = atom({ key: "achievedOpen", plugin: "workboard" } as const, false);
-const openArea = atom({ key: "openArea", plugin: "workboard" } as const, null);
 
 async function receive($: EngineInterface, next: WorkboardBoard): Promise<void> {
 	if (next.kind === "ready") {
@@ -72,7 +71,7 @@ export function register(on: On): void {
 
 	on("session.start", async ($, e, next) => {
 		await $.command.register({
-			description: "Open the Work Board pane: what needs you, what is in flight, goal progress",
+			description: "Open the Work Board pane: what needs you, what is in progress, what is ready to start, goal progress",
 			name: "workboard",
 		});
 		await registerTools($);
@@ -90,7 +89,7 @@ export function register(on: On): void {
 
 	on("ui.render", { component: "Pane", requestId: PANE }, async ($, e) => {
 		const state = await read($, board);
-		const [stamp, selectedArea] = await Promise.all([read($, updatedAt), read($, openArea)]);
+		const stamp = await read($, updatedAt);
 
 		return paneView($.ui.resolve(e), {
 			achievedOpen: await read($, achievedOpen),
@@ -99,8 +98,6 @@ export function register(on: On): void {
 			onOpen: (ask) => openUrl($, ask.url),
 			onRefresh: () => void refresh($),
 			onToggleAchieved: () => void update($, achievedOpen, (open) => !open),
-			onToggleArea: (area) => void update($, openArea, (open) => (open === area ? null : area)),
-			openArea: selectedArea,
 			surface: e.surface,
 			updated: updatedLabel(stamp, await $.clock.now()),
 		});

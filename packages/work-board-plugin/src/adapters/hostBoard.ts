@@ -28,11 +28,7 @@ export async function withClient<A>($: EngineInterface, use: (client: Client) =>
 	if (directory === null) {
 		throw new Error(waitingLine({ cwd, kind: "none" }));
 	}
-	const client = platformClient(
-		directory,
-		(body) => post($, directory, body),
-		() => $.clock.now(),
-	);
+	const client = platformClient(directory, (body) => post($, directory, body));
 	try {
 		return await use(client);
 	} finally {

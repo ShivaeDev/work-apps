@@ -1,5 +1,4 @@
-import { flightsOf, goalsOf, goalTitlesOf } from "#answers.ts";
-import { areasOf } from "#areasOf.ts";
+import { goalsOf, goalTitlesOf, tasksOf } from "#answers.ts";
 import { refusedLine, silentLine } from "#lines.ts";
 import { isRecord, type RpcExit, type RpcInit, type RpcReply, readExits, records, rpcInit, text } from "#rpc.ts";
 import type { WorkboardAsk, WorkboardBlock, WorkboardBoard } from "#types/index.d.ts";
@@ -15,7 +14,7 @@ export function boardInit(directory: string): RpcInit {
 	);
 }
 
-export function readBoard(response: RpcReply, directory: string, now: number): WorkboardBoard {
+export function readBoard(response: RpcReply, directory: string): WorkboardBoard {
 	if (!response.ok) {
 		return { kind: "error", message: refusedLine(response, directory) };
 	}
@@ -23,24 +22,24 @@ export function readBoard(response: RpcReply, directory: string, now: number): W
 	if (exits.size === 0) {
 		return { kind: "error", message: silentLine(directory) };
 	}
-	return snapshot(exits, now);
+	return snapshot(exits);
 }
 
-export function readSnapshot(values: { inbox: unknown; overview: unknown; server: unknown }, now: number): WorkboardBoard {
-	return snapshot(new Map(QUERIES.map((query) => [query, { value: values[query] }])), now);
+export function readSnapshot(values: { inbox: unknown; overview: unknown; server: unknown }): WorkboardBoard {
+	return snapshot(new Map(QUERIES.map((query) => [query, { value: values[query] }])));
 }
 
-function snapshot(exits: Exits, now: number): WorkboardBoard {
+function snapshot(exits: Exits): WorkboardBoard {
 	const server = answerTo(exits, "server");
 	const url = isRecord(server) && text(server.directory) !== undefined ? (text(server.url) ?? null) : null;
 	const overview = answerTo(exits, "overview");
 	const titles = goalTitlesOf(isRecord(overview) ? overview.goals : undefined);
 	return {
-		areas: block(exits, "overview", (value) => areasOf(isRecord(value) ? value.fleet : undefined)),
 		asks: block(exits, "inbox", (value) => asksOf(value, url)),
-		flights: block(exits, "overview", (value) => flightsOf(isRecord(value) ? value.fleet : undefined, now, titles)),
 		goals: block(exits, "overview", (value) => goalsOf(isRecord(value) ? value.goals : undefined)),
 		kind: "ready",
+		ready: block(exits, "overview", (value) => tasksOf(isRecord(value) ? value.tasks : undefined, "ready", titles)),
+		working: block(exits, "overview", (value) => tasksOf(isRecord(value) ? value.tasks : undefined, "working", titles)),
 	};
 }
 

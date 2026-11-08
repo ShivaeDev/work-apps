@@ -63,8 +63,3 @@ export function updatedLabel(updatedAt: number | null, now: number): string | nu
 	const ms = Math.max(0, now - updatedAt);
 	return ms < 60_000 ? `updated ${Math.floor(ms / 1000)}s ago` : `updated ${formatAge(ms)} ago`;
 }
-
-export function prLabel(url: string): string {
-	const number = /\/pull\/(?<number>\d+)/u.exec(url)?.groups?.number;
-	return number === undefined ? "PR" : `#${number}`;
-}

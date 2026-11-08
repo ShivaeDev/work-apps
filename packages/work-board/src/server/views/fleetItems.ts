@@ -22,7 +22,9 @@ function authoredProgress(snapshot: Snapshot): readonly AuthoredProgress[] {
 		const metadata = document.parsed.fields;
 		const asked = waitsOnYou({ metadata, requests: itemRequests(document, snapshot).map((request) => request.state) });
 		const lane = laneOf(metadata, undefined, false, answered.has(id) && !waiting.has(id), asked);
-		return metadata.status === "ready" && lane !== undefined ? [{ file: document.file, status: metadata.status, title, workId: id }] : [];
+		return (metadata.status === "ready" || metadata.status === "working") && lane !== undefined
+			? [{ file: document.file, status: metadata.status, title, workId: id }]
+			: [];
 	});
 }
 
